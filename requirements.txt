@@ -1,0 +1,9 @@
+pandas
+numpy
+scikit-learn
+statsmodels
+streamlit
+plotly
+matplotlib
+pyarrow
+python-dateutil
