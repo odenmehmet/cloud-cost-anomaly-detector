@@ -25,6 +25,13 @@ This directory contains raw, processed, and output data for the cloud cost anoma
 - `processed/daily_service_region_cost.csv`: Daily service-region aggregate for later contributor analysis
 - `processed/daily_features.csv`: Detector-ready daily feature table for later algorithms
 
+### Phase 4 Detector Output Files
+- `outputs/zscore_results.csv`: Rolling Z-score detector results
+- `outputs/stl_results.csv`: STL residual detector results
+- `outputs/stl_components.csv`: STL trend, seasonal, residual, and expected-cost components
+- `outputs/isolation_forest_results.csv`: Isolation Forest detector results
+- `outputs/method_results.csv`: Stacked method-level detector results for later alert logic
+
 ### Future Phase Files
 - `outputs/alerts.csv`: Generated warning and critical alerts
 - `outputs/evaluation_summary.csv`: Precision, recall, F1, FP rate, detection delay

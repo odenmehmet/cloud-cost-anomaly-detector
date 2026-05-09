@@ -9,6 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
+OUTPUTS_DATA_DIR = DATA_DIR / "outputs"
 
 SYNTHETIC_CUR_LIKE_PATH = RAW_DATA_DIR / "synthetic_cur_like_daily.csv"
 ANOMALY_CATALOG_PATH = RAW_DATA_DIR / "anomaly_catalog.csv"
@@ -17,10 +18,22 @@ DAILY_SERVICE_COST_PATH = PROCESSED_DATA_DIR / "daily_service_cost.csv"
 DAILY_REGION_COST_PATH = PROCESSED_DATA_DIR / "daily_region_cost.csv"
 DAILY_SERVICE_REGION_COST_PATH = PROCESSED_DATA_DIR / "daily_service_region_cost.csv"
 DAILY_FEATURES_PATH = PROCESSED_DATA_DIR / "daily_features.csv"
+ZSCORE_RESULTS_PATH = OUTPUTS_DATA_DIR / "zscore_results.csv"
+STL_RESULTS_PATH = OUTPUTS_DATA_DIR / "stl_results.csv"
+ISOLATION_FOREST_RESULTS_PATH = OUTPUTS_DATA_DIR / "isolation_forest_results.csv"
+STL_COMPONENTS_PATH = OUTPUTS_DATA_DIR / "stl_components.csv"
+METHOD_RESULTS_PATH = OUTPUTS_DATA_DIR / "method_results.csv"
 
 DEFAULT_RANDOM_SEED = 42
 START_DATE = "2025-10-01"
 NUM_DAYS = 180
+ZSCORE_ROLLING_WINDOW = 14
+ZSCORE_MIN_PERIODS = 7
+ZSCORE_THRESHOLD = 3.0
+STL_PERIOD = 7
+STL_RESIDUAL_THRESHOLD = 3.0
+ISOLATION_FOREST_N_ESTIMATORS = 100
+ISOLATION_FOREST_CONTAMINATION = 0.05
 
 SERVICES = [
     "AmazonEC2",
@@ -310,6 +323,58 @@ DAILY_FEATURE_COLUMNS = [
     "top_region",
     "top_region_cost_usd",
     "top_region_share",
+]
+
+DETECTOR_RESULT_COLUMNS = [
+    "usage_date",
+    "method",
+    "is_flagged",
+    "score",
+    "threshold",
+    "actual_cost",
+    "expected_cost",
+    "deviation",
+    "relative_deviation",
+    "severity_hint",
+    "explanation",
+]
+
+DETECTOR_OPTIONAL_CONTEXT_COLUMNS = [
+    "is_anomaly",
+    "anomaly_types",
+    "planned_event",
+    "top_service",
+    "top_region",
+]
+
+DETECTOR_RESULT_WITH_CONTEXT_COLUMNS = (
+    DETECTOR_RESULT_COLUMNS + DETECTOR_OPTIONAL_CONTEXT_COLUMNS
+)
+
+STL_COMPONENT_COLUMNS = [
+    "usage_date",
+    "actual_cost",
+    "trend",
+    "seasonal",
+    "residual",
+    "expected_cost",
+    "residual_score",
+    "is_flagged",
+]
+
+ISOLATION_FOREST_FEATURE_COLUMNS = [
+    "total_cost_usd",
+    "total_usage_amount",
+    "day_of_week",
+    "is_weekend",
+    "pct_change_1d",
+    "pct_change_7d",
+    "cost_diff_1d",
+    "cost_diff_7d",
+    "top_service_share",
+    "top_region_share",
+    "service_count",
+    "region_count",
 ]
 
 REQUIRED_CATALOG_EVENT_TYPES = [
