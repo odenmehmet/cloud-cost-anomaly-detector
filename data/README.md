@@ -14,13 +14,21 @@ This directory contains raw, processed, and output data for the cloud cost anoma
 - **Generated in later phases**: Raw and processed CSV files are created by `data_generator.py`
 - **Ephemeral**: Output files can be regenerated without loss
 
-### Data Files (Generated Later)
-- `raw/synthetic_cur_like_daily.csv`: Synthetic daily cost data with service/region breakdown
-- `raw/anomaly_catalog.csv`: Ground truth anomaly labels and metadata
-- `processed/features.csv`: Engineered features for anomaly detection
+### Phase 2 Generated Files
+- `raw/synthetic_cur_like_daily.csv`: Synthetic CUR-like daily billing rows with service, region, environment, team, and ground-truth labels
+- `raw/anomaly_catalog.csv`: Catalog of injected true anomalies and planned usage events
+
+### Phase 3 Processed Files
+- `processed/daily_total_cost.csv`: Daily total cost and usage aggregate with labels
+- `processed/daily_service_cost.csv`: Daily service-level cost and usage aggregate
+- `processed/daily_region_cost.csv`: Daily region-level cost and usage aggregate
+- `processed/daily_service_region_cost.csv`: Daily service-region aggregate for later contributor analysis
+- `processed/daily_features.csv`: Detector-ready daily feature table for later algorithms
+
+### Future Phase Files
 - `outputs/alerts.csv`: Generated warning and critical alerts
 - `outputs/evaluation_summary.csv`: Precision, recall, F1, FP rate, detection delay
 - `outputs/contributor_analysis.csv`: Service/region contribution to cost anomalies
 
 ### Git Policy
-The `.gitignore` file excludes all CSV files in this directory from version control.
+Generated CSV files should be left uncommitted unless the repository owner explicitly wants sample data committed.
