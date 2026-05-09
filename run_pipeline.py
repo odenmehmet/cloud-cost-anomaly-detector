@@ -6,9 +6,10 @@ Implemented:
 - Phase 3: preprocessing and feature engineering
 - Phase 4: detection methods
 - Phase 5: alert layer and contributor analysis
+- Phase 6: evaluation metrics
 
-Not implemented here: evaluation metrics, real cloud integrations, notification
-delivery, or Streamlit dashboard logic.
+Not implemented here: real cloud integrations, notification delivery, or
+Streamlit dashboard logic.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from src.data_generator import generate_synthetic_dataset
 from src.detectors.isolation_forest import run_isolation_forest_detector
 from src.detectors.stl import run_stl_detector
 from src.detectors.zscore import run_zscore_detector
+from src.evaluation import run_evaluation
 from src.features import run_feature_engineering
 from src.preprocessing import run_preprocessing
 
@@ -125,11 +127,12 @@ def _print_pipeline_summary(
     method_results: pd.DataFrame,
     alerts: pd.DataFrame,
     contributors: pd.DataFrame,
+    evaluation_result: dict,
     output_paths: list[Path],
 ) -> None:
-    """Print the required Phase 2 through Phase 5 pipeline summary."""
-    print("Pipeline complete: Phase 2 + Phase 3 + Phase 4 + Phase 5 only.")
-    print("No evaluation metrics or dashboard ran.")
+    """Print the required Phase 2 through Phase 6 pipeline summary."""
+    print("Pipeline complete: Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6 only.")
+    print("No dashboard ran.")
     print(f"Raw rows: {raw_rows}")
     print(f"Daily feature rows: {len(daily_features)}")
     for method in ["zscore", "stl", "isolation_forest"]:
@@ -142,6 +145,10 @@ def _print_pipeline_summary(
     print(f"Warning alerts: {int((alerts['alert_level'] == 'warning').sum())}")
     print(f"Critical alerts: {int((alerts['alert_level'] == 'critical').sum())}")
     print(f"Contributor rows: {len(contributors)}")
+    print(f"Evaluation summary rows: {len(evaluation_result['evaluation_summary'])}")
+    print(f"Evaluation by type rows: {len(evaluation_result['evaluation_by_type'])}")
+    print(f"Detection delay rows: {len(evaluation_result['detection_delay'])}")
+    print(f"False positive day rows: {len(evaluation_result['false_positive_days'])}")
     print(
         f"Date range: {daily_features['usage_date'].min()} "
         f"to {daily_features['usage_date'].max()}"
@@ -152,7 +159,7 @@ def _print_pipeline_summary(
 
 
 def main() -> None:
-    """Run implemented phases in order through Phase 5."""
+    """Run implemented phases in order through Phase 6."""
     generation_result = generate_synthetic_dataset(verbose=False)
     preprocessing_result = run_preprocessing()
     feature_path = run_feature_engineering()
@@ -166,6 +173,7 @@ def main() -> None:
     contributors_path = run_contributor_analysis()
     alerts = pd.read_csv(alerts_path)
     contributors = pd.read_csv(contributors_path)
+    evaluation_result = run_evaluation()
 
     output_paths = [
         generation_result["paths"]["synthetic_cur_like_daily"],
@@ -183,6 +191,11 @@ def main() -> None:
         config.ALERT_METHOD_SUMMARY_PATH,
         config.ALERTS_PATH,
         config.CONTRIBUTORS_PATH,
+        config.EVALUATION_SUMMARY_PATH,
+        config.EVALUATION_BY_TYPE_PATH,
+        config.DETECTION_DELAY_PATH,
+        config.FALSE_POSITIVE_DAYS_PATH,
+        config.EVALUATION_DAILY_PREDICTIONS_PATH,
     ]
 
     _print_pipeline_summary(
@@ -191,6 +204,7 @@ def main() -> None:
         method_results=method_results,
         alerts=alerts,
         contributors=contributors,
+        evaluation_result=evaluation_result,
         output_paths=output_paths,
     )
 

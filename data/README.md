@@ -5,13 +5,13 @@ This directory contains raw, processed, and output data for the cloud cost anoma
 ### Directory Structure
 - **raw/**: Synthetic CUR-like labeled billing data (generated in Phase 2)
 - **processed/**: Cleaned, validated, and preprocessed daily cost data
-- **outputs/**: Anomaly detection results and evaluation metrics
+- **outputs/**: Detector, alert, and contributor analysis outputs
 
 ### Important Notes
 
 **No real cloud billing data should be committed to this repository.** All data is:
 - **Synthetic and reproducible**: Generated using a fixed random seed for consistent evaluation
-- **Generated in later phases**: Raw and processed CSV files are created by `data_generator.py`
+- **Regenerable**: Raw, processed, output, and report CSV files are created by the pipeline modules
 - **Ephemeral**: Output files can be regenerated without loss
 
 ### Phase 2 Generated Files
@@ -37,8 +37,12 @@ This directory contains raw, processed, and output data for the cloud cost anoma
 - `outputs/alerts.csv`: Warning and critical alerts based on method agreement and relative cost deviation
 - `outputs/contributors.csv`: Top service-region contributors for each alert date
 
-### Future Phase Files
-- `outputs/evaluation_summary.csv`: Precision, recall, F1, FP rate, detection delay
+### Phase 6 Evaluation Reports
+- `../reports/evaluation_summary.csv`: Precision, recall, F1, false positives per 30 days, exact-day and tolerant matching
+- `../reports/evaluation_by_type.csv`: Recall by injected anomaly type
+- `../reports/detection_delay.csv`: Event-level detection delay by subject
+- `../reports/false_positive_days.csv`: Exact-day false-positive listing
+- `../reports/evaluation_daily_predictions.csv`: Daily ground-truth labels and prediction flags
 
 ### Git Policy
 Generated CSV files should be left uncommitted unless the repository owner explicitly wants sample data committed.

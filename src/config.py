@@ -10,6 +10,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 OUTPUTS_DATA_DIR = DATA_DIR / "outputs"
+REPORTS_DIR = PROJECT_ROOT / "reports"
 
 SYNTHETIC_CUR_LIKE_PATH = RAW_DATA_DIR / "synthetic_cur_like_daily.csv"
 ANOMALY_CATALOG_PATH = RAW_DATA_DIR / "anomaly_catalog.csv"
@@ -26,6 +27,11 @@ METHOD_RESULTS_PATH = OUTPUTS_DATA_DIR / "method_results.csv"
 ALERTS_PATH = OUTPUTS_DATA_DIR / "alerts.csv"
 CONTRIBUTORS_PATH = OUTPUTS_DATA_DIR / "contributors.csv"
 ALERT_METHOD_SUMMARY_PATH = OUTPUTS_DATA_DIR / "alert_method_summary.csv"
+EVALUATION_SUMMARY_PATH = REPORTS_DIR / "evaluation_summary.csv"
+EVALUATION_BY_TYPE_PATH = REPORTS_DIR / "evaluation_by_type.csv"
+DETECTION_DELAY_PATH = REPORTS_DIR / "detection_delay.csv"
+FALSE_POSITIVE_DAYS_PATH = REPORTS_DIR / "false_positive_days.csv"
+EVALUATION_DAILY_PREDICTIONS_PATH = REPORTS_DIR / "evaluation_daily_predictions.csv"
 
 DEFAULT_RANDOM_SEED = 42
 START_DATE = "2025-10-01"
@@ -40,6 +46,16 @@ ISOLATION_FOREST_CONTAMINATION = 0.05
 WARNING_RELATIVE_DELTA = 0.05
 CRITICAL_RELATIVE_DELTA = 0.08
 TOP_CONTRIBUTOR_LIMIT = 5
+EVALUATION_SUBJECTS = [
+    "zscore",
+    "stl",
+    "isolation_forest",
+    "agreement_alert",
+]
+EVALUATION_MATCHING_MODES = [
+    "exact_day",
+    "tolerance_1_day",
+]
 
 SERVICES = [
     "AmazonEC2",
@@ -433,6 +449,68 @@ CONTRIBUTOR_COLUMNS = [
     "contribution_share",
     "rank",
     "contributor_reason",
+]
+
+EVALUATION_SUMMARY_COLUMNS = [
+    "subject",
+    "matching_mode",
+    "total_days",
+    "true_anomaly_days",
+    "predicted_positive_days",
+    "true_positives",
+    "false_positives",
+    "true_negatives",
+    "false_negatives",
+    "precision",
+    "recall",
+    "f1",
+    "false_positives_per_30_days",
+]
+
+EVALUATION_BY_TYPE_COLUMNS = [
+    "subject",
+    "anomaly_type",
+    "true_days",
+    "detected_days_exact",
+    "detected_days_tolerance_1_day",
+    "recall_exact",
+    "recall_tolerance_1_day",
+]
+
+DETECTION_DELAY_COLUMNS = [
+    "subject",
+    "anomaly_id",
+    "anomaly_type",
+    "start_date",
+    "end_date",
+    "detected",
+    "first_detection_date",
+    "detection_delay_days",
+]
+
+FALSE_POSITIVE_DAYS_COLUMNS = [
+    "subject",
+    "usage_date",
+    "prediction_source",
+    "planned_event",
+    "anomaly_type",
+    "alert_level",
+    "methods_triggered",
+    "actual_cost",
+    "expected_cost",
+    "relative_delta",
+    "reason",
+]
+
+EVALUATION_DAILY_PREDICTION_COLUMNS = [
+    "usage_date",
+    "is_anomaly",
+    "anomaly_types",
+    "planned_event",
+    "zscore_pred",
+    "stl_pred",
+    "isolation_forest_pred",
+    "agreement_alert_pred",
 ]
 
 REQUIRED_CATALOG_EVENT_TYPES = [
