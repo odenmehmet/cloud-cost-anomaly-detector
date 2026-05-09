@@ -5,9 +5,10 @@ Implemented:
 - Phase 2: synthetic CUR-like data generation
 - Phase 3: preprocessing and feature engineering
 - Phase 4: detection methods
+- Phase 5: alert layer and contributor analysis
 
-Not implemented here: alerts, contributor analysis, evaluation, real cloud
-integrations, or Streamlit dashboard logic.
+Not implemented here: evaluation metrics, real cloud integrations, notification
+delivery, or Streamlit dashboard logic.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ import pandas as pd
 import numpy as np
 
 from src import config
+from src.alerts import run_alert_generation
+from src.contributors import run_contributor_analysis
 from src.data_generator import generate_synthetic_dataset
 from src.detectors.isolation_forest import run_isolation_forest_detector
 from src.detectors.stl import run_stl_detector
@@ -120,11 +123,13 @@ def _print_pipeline_summary(
     raw_rows: int,
     daily_features: pd.DataFrame,
     method_results: pd.DataFrame,
+    alerts: pd.DataFrame,
+    contributors: pd.DataFrame,
     output_paths: list[Path],
 ) -> None:
-    """Print the required Phase 2 + Phase 3 + Phase 4 pipeline summary."""
-    print("Pipeline complete: Phase 2 + Phase 3 + Phase 4 only.")
-    print("No alerts, evaluation, contributor analysis, or dashboard ran.")
+    """Print the required Phase 2 through Phase 5 pipeline summary."""
+    print("Pipeline complete: Phase 2 + Phase 3 + Phase 4 + Phase 5 only.")
+    print("No evaluation metrics or dashboard ran.")
     print(f"Raw rows: {raw_rows}")
     print(f"Daily feature rows: {len(daily_features)}")
     for method in ["zscore", "stl", "isolation_forest"]:
@@ -133,6 +138,10 @@ def _print_pipeline_summary(
         )
         print(f"{method} flagged days: {flagged_days}")
     print(f"Total method result rows: {len(method_results)}")
+    print(f"Total alerts: {len(alerts)}")
+    print(f"Warning alerts: {int((alerts['alert_level'] == 'warning').sum())}")
+    print(f"Critical alerts: {int((alerts['alert_level'] == 'critical').sum())}")
+    print(f"Contributor rows: {len(contributors)}")
     print(
         f"Date range: {daily_features['usage_date'].min()} "
         f"to {daily_features['usage_date'].max()}"
@@ -143,7 +152,7 @@ def _print_pipeline_summary(
 
 
 def main() -> None:
-    """Run implemented phases in order: generation, preprocessing, features, detectors."""
+    """Run implemented phases in order through Phase 5."""
     generation_result = generate_synthetic_dataset(verbose=False)
     preprocessing_result = run_preprocessing()
     feature_path = run_feature_engineering()
@@ -153,6 +162,10 @@ def main() -> None:
     stl_path = run_stl_detector()
     isolation_path = run_isolation_forest_detector()
     method_results = _write_method_results([zscore_path, stl_path, isolation_path])
+    alerts_path = run_alert_generation()
+    contributors_path = run_contributor_analysis()
+    alerts = pd.read_csv(alerts_path)
+    contributors = pd.read_csv(contributors_path)
 
     output_paths = [
         generation_result["paths"]["synthetic_cur_like_daily"],
@@ -167,12 +180,17 @@ def main() -> None:
         config.ISOLATION_FOREST_RESULTS_PATH,
         config.STL_COMPONENTS_PATH,
         config.METHOD_RESULTS_PATH,
+        config.ALERT_METHOD_SUMMARY_PATH,
+        config.ALERTS_PATH,
+        config.CONTRIBUTORS_PATH,
     ]
 
     _print_pipeline_summary(
         raw_rows=len(preprocessing_result["raw"]),
         daily_features=daily_features,
         method_results=method_results,
+        alerts=alerts,
+        contributors=contributors,
         output_paths=output_paths,
     )
 

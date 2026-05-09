@@ -32,10 +32,13 @@ This directory contains raw, processed, and output data for the cloud cost anoma
 - `outputs/isolation_forest_results.csv`: Isolation Forest detector results
 - `outputs/method_results.csv`: Stacked method-level detector results for later alert logic
 
+### Phase 5 Alert and Contributor Files
+- `outputs/alert_method_summary.csv`: Daily method agreement and alert-decision summary
+- `outputs/alerts.csv`: Warning and critical alerts based on method agreement and relative cost deviation
+- `outputs/contributors.csv`: Top service-region contributors for each alert date
+
 ### Future Phase Files
-- `outputs/alerts.csv`: Generated warning and critical alerts
 - `outputs/evaluation_summary.csv`: Precision, recall, F1, FP rate, detection delay
-- `outputs/contributor_analysis.csv`: Service/region contribution to cost anomalies
 
 ### Git Policy
 Generated CSV files should be left uncommitted unless the repository owner explicitly wants sample data committed.

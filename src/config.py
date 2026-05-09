@@ -23,6 +23,9 @@ STL_RESULTS_PATH = OUTPUTS_DATA_DIR / "stl_results.csv"
 ISOLATION_FOREST_RESULTS_PATH = OUTPUTS_DATA_DIR / "isolation_forest_results.csv"
 STL_COMPONENTS_PATH = OUTPUTS_DATA_DIR / "stl_components.csv"
 METHOD_RESULTS_PATH = OUTPUTS_DATA_DIR / "method_results.csv"
+ALERTS_PATH = OUTPUTS_DATA_DIR / "alerts.csv"
+CONTRIBUTORS_PATH = OUTPUTS_DATA_DIR / "contributors.csv"
+ALERT_METHOD_SUMMARY_PATH = OUTPUTS_DATA_DIR / "alert_method_summary.csv"
 
 DEFAULT_RANDOM_SEED = 42
 START_DATE = "2025-10-01"
@@ -34,6 +37,9 @@ STL_PERIOD = 7
 STL_RESIDUAL_THRESHOLD = 3.0
 ISOLATION_FOREST_N_ESTIMATORS = 100
 ISOLATION_FOREST_CONTAMINATION = 0.05
+WARNING_RELATIVE_DELTA = 0.05
+CRITICAL_RELATIVE_DELTA = 0.08
+TOP_CONTRIBUTOR_LIMIT = 5
 
 SERVICES = [
     "AmazonEC2",
@@ -375,6 +381,58 @@ ISOLATION_FOREST_FEATURE_COLUMNS = [
     "top_region_share",
     "service_count",
     "region_count",
+]
+
+ALERT_COLUMNS = [
+    "alert_id",
+    "usage_date",
+    "alert_level",
+    "methods_triggered",
+    "method_count",
+    "actual_cost",
+    "expected_cost",
+    "relative_delta",
+    "max_method_score",
+    "max_relative_deviation",
+    "method_severity_hints",
+    "is_true_anomaly",
+    "anomaly_type",
+    "planned_event",
+    "top_service",
+    "top_region",
+    "alert_reason",
+]
+
+ALERT_METHOD_SUMMARY_COLUMNS = [
+    "usage_date",
+    "methods_triggered",
+    "method_count",
+    "actual_cost",
+    "expected_cost",
+    "relative_delta",
+    "max_method_score",
+    "max_relative_deviation",
+    "method_severity_hints",
+    "detector_explanations",
+    "is_true_anomaly",
+    "anomaly_type",
+    "planned_event",
+    "top_service",
+    "top_region",
+]
+
+CONTRIBUTOR_COLUMNS = [
+    "alert_id",
+    "usage_date",
+    "alert_level",
+    "service",
+    "region",
+    "cost_usd",
+    "previous_7d_avg_cost",
+    "delta_cost",
+    "contribution_share",
+    "rank",
+    "contributor_reason",
 ]
 
 REQUIRED_CATALOG_EVENT_TYPES = [
