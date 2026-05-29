@@ -571,6 +571,7 @@ Current behavior:
 - Display warning and critical alerts
 - Show anomaly details
 - Display evaluation results
+- Provide a polished Level 1 demo flow without running the pipeline automatically
 
 ---
 
@@ -617,7 +618,7 @@ Generated CSV files are ignored by default through `.gitignore`.
 
 ## Current Phase Status
 
-Phase 8 integration and QA is complete in this working tree.
+Phase 9 UI polish and demo readiness is complete in this working tree.
 
 | Phase | Status |
 |---|---|
@@ -630,7 +631,7 @@ Phase 8 integration and QA is complete in this working tree.
 | Phase 6 — Evaluation | Completed |
 | Phase 7 — Streamlit Dashboard | Completed |
 | Phase 8 — Integration & QA | Completed |
-| Phase 9 — Demo Polish | Not Started |
+| Phase 9 — Demo Polish | Completed |
 
 ---
 

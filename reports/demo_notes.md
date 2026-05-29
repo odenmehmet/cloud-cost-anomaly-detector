@@ -16,9 +16,10 @@ The dashboard reads existing CSV outputs only. It does not run the pipeline auto
 1. Start on the homepage and explain the Level 1 scope: synthetic CUR-like data, anomaly detection, alerting, contributor analysis, and evaluation.
 2. Open **Overview** and show the daily cost trend, true anomaly markers, warning alerts, and critical alerts.
 3. Open **Anomaly Detail** and select `ALERT-0001` / `2025-11-20` if available. Explain it as a critical true anomaly caused by a one-day spike.
-4. Still in **Anomaly Detail**, point out the method rows and contributor table. Emphasize that contributor analysis identifies service/region cost contributors, not causal root-cause attribution.
-5. Select `ALERT-0002` / `2025-12-02` if available. Explain it as a planned-event false positive that remains useful for evaluation.
-6. Open **Evaluation** and compare precision, recall, F1, false positives per 30 days, recall by anomaly type, and detection delay.
+4. Still in **Anomaly Detail**, use the local context chart to compare actual cost against the STL expected cost around the alert date.
+5. Point out the method rows and contributor table. Emphasize that contributor analysis identifies service/region cost contributors, not causal root-cause attribution.
+6. Select `ALERT-0002` / `2025-12-02` if available. Explain it as a planned-event false positive that remains useful for evaluation.
+7. Open **Evaluation** and compare precision, recall, F1, false positives per 30 days, recall by anomaly type, and detection delay.
 
 ## Key Talking Points
 
@@ -26,6 +27,7 @@ The dashboard reads existing CSV outputs only. It does not run the pipeline auto
 - Three simple detectors are compared: Rolling Z-score, STL decomposition, and Isolation Forest.
 - The final alert layer uses method agreement plus relative cost deviation.
 - Warning and critical alerts are generated without notification delivery.
+- The alert detail page includes local cost context and top service/region cost increases.
 - Contributor analysis is service/region based and non-causal.
 - Evaluation is intentionally honest: harder cases such as gradual drift may have lower recall.
 - Planned event false positives show why human interpretation matters.
