@@ -39,13 +39,32 @@ def _join_anomaly_types(types: pd.Series) -> str:
     return "|".join(anomaly_types) if anomaly_types else "none"
 
 
+def _join_planned_event_ids(values: pd.Series) -> str:
+    """Join planned-event IDs while preserving 'none' for normal groups."""
+    event_ids = sorted(
+        {
+            str(value).strip()
+            for value in values
+            if pd.notna(value) and str(value).strip() not in {"", "none", "nan"}
+        }
+    )
+    return "|".join(event_ids) if event_ids else "none"
+
+
 def load_raw_billing_data(path: Path = config.SYNTHETIC_CUR_LIKE_PATH) -> pd.DataFrame:
     """Load and normalize the raw synthetic CUR-like billing CSV."""
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Raw billing data not found: {path}")
 
-    df = pd.read_csv(path, dtype={"anomaly_id": str})
+    df = pd.read_csv(
+        path,
+        dtype={
+            "anomaly_id": str,
+            "planned_event_id": str,
+            "usage_account_id": str,
+        },
+    )
     validate_raw_billing_data(df)
 
     normalized = df.copy()
@@ -96,6 +115,10 @@ def validate_raw_billing_data(df: pd.DataFrame) -> None:
     planned_values = set(pd.to_numeric(df["planned_event"], errors="raise").unique())
     if not planned_values.issubset({0, 1}):
         raise ValueError("Raw planned_event must contain only 0/1.")
+    if df["usage_account_id"].astype(str).str.strip().eq("").any():
+        raise ValueError("Raw usage_account_id must be non-empty.")
+    if not (df.loc[df["planned_event"] == 0, "planned_event_id"] == "none").all():
+        raise ValueError("Normal rows must use planned_event_id='none'.")
 
 
 def build_daily_total_cost(df: pd.DataFrame) -> pd.DataFrame:
@@ -107,10 +130,12 @@ def build_daily_total_cost(df: pd.DataFrame) -> pd.DataFrame:
             total_usage_amount=("usage_amount", "sum"),
             service_count=("service", "nunique"),
             region_count=("region", "nunique"),
+            account_count=("usage_account_id", "nunique"),
             row_count=("usage_date", "size"),
             is_anomaly=("is_anomaly", "max"),
             anomaly_types=("anomaly_type", _join_anomaly_types),
             planned_event=("planned_event", "max"),
+            planned_event_ids=("planned_event_id", _join_planned_event_ids),
         )
         .sort_values("usage_date")
         .reset_index(drop=True)
@@ -133,6 +158,7 @@ def build_daily_service_cost(df: pd.DataFrame) -> pd.DataFrame:
             is_anomaly=("is_anomaly", "max"),
             anomaly_types=("anomaly_type", _join_anomaly_types),
             planned_event=("planned_event", "max"),
+            planned_event_ids=("planned_event_id", _join_planned_event_ids),
         )
         .sort_values(["usage_date", "service"])
         .reset_index(drop=True)
@@ -157,6 +183,7 @@ def build_daily_region_cost(df: pd.DataFrame) -> pd.DataFrame:
             is_anomaly=("is_anomaly", "max"),
             anomaly_types=("anomaly_type", _join_anomaly_types),
             planned_event=("planned_event", "max"),
+            planned_event_ids=("planned_event_id", _join_planned_event_ids),
         )
         .sort_values(["usage_date", "region"])
         .reset_index(drop=True)
@@ -181,6 +208,7 @@ def build_daily_service_region_cost(df: pd.DataFrame) -> pd.DataFrame:
             is_anomaly=("is_anomaly", "max"),
             anomaly_types=("anomaly_type", _join_anomaly_types),
             planned_event=("planned_event", "max"),
+            planned_event_ids=("planned_event_id", _join_planned_event_ids),
         )
         .sort_values(["usage_date", "service", "region"])
         .reset_index(drop=True)
@@ -218,6 +246,8 @@ def validate_daily_total_cost(df: pd.DataFrame) -> None:
         raise ValueError("daily_total_cost is_anomaly must contain only 0/1.")
     if not set(df["planned_event"].unique()).issubset({0, 1}):
         raise ValueError("daily_total_cost planned_event must contain only 0/1.")
+    if df["planned_event_ids"].astype(str).str.strip().eq("").any():
+        raise ValueError("daily_total_cost contains blank planned_event_ids.")
 
 
 def validate_processed_outputs(
@@ -258,6 +288,8 @@ def validate_processed_outputs(
             raise ValueError(f"{name} is_anomaly must contain only 0/1.")
         if not set(output["planned_event"].unique()).issubset({0, 1}):
             raise ValueError(f"{name} planned_event must contain only 0/1.")
+        if output["planned_event_ids"].astype(str).str.strip().eq("").any():
+            raise ValueError(f"{name} contains blank planned_event_ids.")
 
 
 def save_processed_outputs(

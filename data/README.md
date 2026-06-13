@@ -15,8 +15,9 @@ This directory contains raw, processed, and output data for the cloud cost anoma
 - **Ephemeral**: Output files can be regenerated without loss
 
 ### Phase 2 Generated Files
-- `raw/synthetic_cur_like_daily.csv`: Synthetic CUR-like daily billing rows with service, region, environment, team, and ground-truth labels
-- `raw/anomaly_catalog.csv`: Catalog of injected true anomalies and planned usage events
+- `raw/synthetic_cur_like_daily.csv`: Synthetic CUR-like daily billing rows with stable account, billing-period, service, region, tag, and label fields
+- `raw/anomaly_catalog.csv`: Catalog of injected true anomalies
+- `raw/planned_event_catalog.csv`: Separate catalog of legitimate planned usage events
 
 ### Phase 3 Processed Files
 - `processed/daily_total_cost.csv`: Daily total cost and usage aggregate with labels
@@ -34,11 +35,14 @@ This directory contains raw, processed, and output data for the cloud cost anoma
 
 ### Phase 5 Alert and Contributor Files
 - `outputs/alert_method_summary.csv`: Daily method agreement and alert-decision summary
-- `outputs/alerts.csv`: Warning and critical alerts based on method agreement and relative cost deviation
+- `outputs/alerts.csv`: Operational warning and critical alerts based on agreement and upward relative cost deviation
+- `outputs/suppressed_alerts.csv`: Planned-event detector candidates excluded from operational alerts
 - `outputs/contributors.csv`: Top service-region contributors for each alert date
 
 ### Phase 6 Evaluation Reports
 - `../reports/evaluation_summary.csv`: Precision, recall, F1, false positives per 30 days, exact-day and tolerant matching
+- `../reports/calibration_summary.csv`: Bounded detector candidate sweep and selected settings
+- `../reports/event_level_evaluation.csv`: Event precision, recall, and F1 for contiguous prediction runs
 - `../reports/evaluation_by_type.csv`: Recall by injected anomaly type
 - `../reports/detection_delay.csv`: Event-level detection delay by subject
 - `../reports/false_positive_days.csv`: Exact-day false-positive listing

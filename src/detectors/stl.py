@@ -80,9 +80,9 @@ def _severity_from_score(score: float) -> str:
     return "none"
 
 
-def _stl_explanation(score: float) -> str:
+def _stl_explanation(score: float, threshold: float) -> str:
     """Build a concise explanation for an STL result row."""
-    if score >= config.STL_RESIDUAL_THRESHOLD:
+    if score >= threshold:
         return (
             "STL residual is unusually high compared with the weekly seasonal "
             "baseline."
@@ -130,7 +130,10 @@ def build_stl_outputs(
             "deviation": deviation.round(4),
             "relative_deviation": pd.Series(relative_deviation).round(6),
             "severity_hint": [_severity_from_score(score) for score in residual_score],
-            "explanation": [_stl_explanation(score) for score in residual_score],
+            "explanation": [
+                _stl_explanation(score, residual_threshold)
+                for score in residual_score
+            ],
         }
     )
 
@@ -201,10 +204,16 @@ def run_stl_detector(
     input_path: Path = config.DAILY_FEATURES_PATH,
     output_path: Path = config.STL_RESULTS_PATH,
     components_path: Path = config.STL_COMPONENTS_PATH,
+    period: int = config.STL_PERIOD,
+    residual_threshold: float = config.STL_RESIDUAL_THRESHOLD,
 ) -> Path:
     """Run the STL detector and write result/component CSV outputs."""
     daily_features = _load_daily_features(input_path)
-    results, components = build_stl_outputs(daily_features)
+    results, components = build_stl_outputs(
+        daily_features,
+        period=period,
+        residual_threshold=residual_threshold,
+    )
 
     output_path = Path(output_path)
     components_path = Path(components_path)

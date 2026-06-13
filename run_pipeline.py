@@ -9,25 +9,19 @@ Implemented:
 - Phase 6: evaluation metrics
 
 Not implemented here: real cloud integrations, notification delivery, or
-Streamlit dashboard logic.
+web dashboard logic.
 """
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
-
-warnings.filterwarnings(
-    "ignore",
-    message="Pandas requires version .*",
-    category=UserWarning,
-)
 
 import pandas as pd
 import numpy as np
 
 from src import config
 from src.alerts import run_alert_generation
+from src.calibration import run_calibration
 from src.contributors import run_contributor_analysis
 from src.data_generator import generate_synthetic_dataset
 from src.detectors.isolation_forest import run_isolation_forest_detector
@@ -126,6 +120,7 @@ def _print_pipeline_summary(
     daily_features: pd.DataFrame,
     method_results: pd.DataFrame,
     alerts: pd.DataFrame,
+    suppressed_alerts: pd.DataFrame,
     contributors: pd.DataFrame,
     evaluation_result: dict,
     output_paths: list[Path],
@@ -142,11 +137,16 @@ def _print_pipeline_summary(
         print(f"{method} flagged days: {flagged_days}")
     print(f"Total method result rows: {len(method_results)}")
     print(f"Total alerts: {len(alerts)}")
+    print(f"Suppressed planned-event candidates: {len(suppressed_alerts)}")
     print(f"Warning alerts: {int((alerts['alert_level'] == 'warning').sum())}")
     print(f"Critical alerts: {int((alerts['alert_level'] == 'critical').sum())}")
     print(f"Contributor rows: {len(contributors)}")
     print(f"Evaluation summary rows: {len(evaluation_result['evaluation_summary'])}")
     print(f"Evaluation by type rows: {len(evaluation_result['evaluation_by_type'])}")
+    print(
+        "Event-level evaluation rows: "
+        f"{len(evaluation_result['event_level_evaluation'])}"
+    )
     print(f"Detection delay rows: {len(evaluation_result['detection_delay'])}")
     print(f"False positive day rows: {len(evaluation_result['false_positive_days'])}")
     print(
@@ -164,20 +164,29 @@ def main() -> None:
     preprocessing_result = run_preprocessing()
     feature_path = run_feature_engineering()
     daily_features = pd.read_csv(feature_path)
+    anomaly_catalog = pd.read_csv(config.ANOMALY_CATALOG_PATH)
+    selected_settings, calibration_summary = run_calibration(
+        daily_features,
+        anomaly_catalog,
+    )
 
-    zscore_path = run_zscore_detector()
-    stl_path = run_stl_detector()
-    isolation_path = run_isolation_forest_detector()
+    zscore_path = run_zscore_detector(**selected_settings["zscore"])
+    stl_path = run_stl_detector(**selected_settings["stl"])
+    isolation_path = run_isolation_forest_detector(
+        **selected_settings["isolation_forest"]
+    )
     method_results = _write_method_results([zscore_path, stl_path, isolation_path])
-    alerts_path = run_alert_generation()
+    alert_paths = run_alert_generation()
     contributors_path = run_contributor_analysis()
-    alerts = pd.read_csv(alerts_path)
+    alerts = pd.read_csv(alert_paths["alerts"])
+    suppressed_alerts = pd.read_csv(alert_paths["suppressed_alerts"])
     contributors = pd.read_csv(contributors_path)
     evaluation_result = run_evaluation()
 
     output_paths = [
         generation_result["paths"]["synthetic_cur_like_daily"],
         generation_result["paths"]["anomaly_catalog"],
+        generation_result["paths"]["planned_event_catalog"],
         config.DAILY_TOTAL_COST_PATH,
         config.DAILY_SERVICE_COST_PATH,
         config.DAILY_REGION_COST_PATH,
@@ -190,9 +199,12 @@ def main() -> None:
         config.METHOD_RESULTS_PATH,
         config.ALERT_METHOD_SUMMARY_PATH,
         config.ALERTS_PATH,
+        config.SUPPRESSED_ALERTS_PATH,
         config.CONTRIBUTORS_PATH,
+        config.CALIBRATION_SUMMARY_PATH,
         config.EVALUATION_SUMMARY_PATH,
         config.EVALUATION_BY_TYPE_PATH,
+        config.EVENT_LEVEL_EVALUATION_PATH,
         config.DETECTION_DELAY_PATH,
         config.FALSE_POSITIVE_DAYS_PATH,
         config.EVALUATION_DAILY_PREDICTIONS_PATH,
@@ -203,6 +215,7 @@ def main() -> None:
         daily_features=daily_features,
         method_results=method_results,
         alerts=alerts,
+        suppressed_alerts=suppressed_alerts,
         contributors=contributors,
         evaluation_result=evaluation_result,
         output_paths=output_paths,

@@ -101,7 +101,7 @@ def compute_previous_7d_average(
 def _contributor_reason(row: pd.Series) -> str:
     """Build a concise non-causal contributor explanation."""
     share_percent = row["contribution_share"] * 100
-    if row["positive_delta_cost"] > 0:
+    if row["contribution_basis"] == "positive_delta":
         return (
             f"{row['service']} in {row['region']} contributed "
             f"{share_percent:.1f}% of the positive cost increase versus its "
@@ -155,17 +155,22 @@ def build_contributors(
             current["contribution_share"] = (
                 current["positive_delta_cost"] / positive_delta_sum
             )
+            current["contribution_basis"] = "positive_delta"
+            ranked = current[current["positive_delta_cost"] > 0].sort_values(
+                ["positive_delta_cost", "cost_usd", "service", "region"],
+                ascending=[False, False, True, True],
+            ).head(config.TOP_CONTRIBUTOR_LIMIT)
         else:
             total_current_cost = float(current["cost_usd"].sum())
             if total_current_cost > 0:
                 current["contribution_share"] = current["cost_usd"] / total_current_cost
             else:
                 current["contribution_share"] = 0.0
-
-        ranked = current.sort_values(
-            ["positive_delta_cost", "cost_usd", "service", "region"],
-            ascending=[False, False, True, True],
-        ).head(config.TOP_CONTRIBUTOR_LIMIT)
+            current["contribution_basis"] = "current_cost_fallback"
+            ranked = current.sort_values(
+                ["cost_usd", "service", "region"],
+                ascending=[False, True, True],
+            ).head(config.TOP_CONTRIBUTOR_LIMIT)
 
         for rank, row in enumerate(ranked.itertuples(index=False), start=1):
             row_series = pd.Series(row._asdict())
@@ -186,6 +191,7 @@ def build_contributors(
                         float(np.clip(row.contribution_share, 0.0, 1.0)),
                         6,
                     ),
+                    "contribution_basis": row.contribution_basis,
                     "rank": rank,
                     "contributor_reason": _contributor_reason(row_series),
                 }
@@ -239,6 +245,12 @@ def validate_contributors(
         raise ValueError("previous_7d_avg_cost must be non-negative.")
     if not contributors["contribution_share"].between(0, 1).all():
         raise ValueError("contribution_share must be between 0 and 1.")
+    allowed_bases = {"positive_delta", "current_cost_fallback"}
+    if not set(contributors["contribution_basis"]).issubset(allowed_bases):
+        raise ValueError("contribution_basis contains invalid values.")
+    positive_rows = contributors["contribution_basis"] == "positive_delta"
+    if (contributors.loc[positive_rows, "delta_cost"] <= 0).any():
+        raise ValueError("positive_delta contributors must have positive delta_cost.")
     if contributors["contributor_reason"].astype(str).str.strip().eq("").any():
         raise ValueError("contributor_reason must be non-empty.")
 

@@ -60,9 +60,9 @@ def _severity_from_z_score(abs_z_score: float) -> str:
     return "none"
 
 
-def _zscore_explanation(z_score: float) -> str:
+def _zscore_explanation(z_score: float, threshold: float) -> str:
     """Build a concise explanation for a Z-score result row."""
-    if abs(z_score) >= config.ZSCORE_THRESHOLD:
+    if abs(z_score) >= threshold:
         direction = "above" if z_score > 0 else "below"
         return (
             f"Daily cost is {abs(z_score):.2f} standard deviations "
@@ -111,12 +111,14 @@ def _weekday_matched_rolling_baseline(
             same_weekday_means.append(np.nan)
             same_weekday_stds.append(np.nan)
 
-    expanding_mean = actual_cost.expanding(min_periods=1).mean()
-    expanding_std = actual_cost.expanding(min_periods=2).std()
+    past_cost = actual_cost.shift(1)
+    expanding_mean = past_cost.expanding(min_periods=1).mean()
+    expanding_std = past_cost.expanding(min_periods=2).std()
     baseline_mean = (
         pd.Series(same_weekday_means, index=df.index)
         .fillna(fallback_mean)
         .fillna(expanding_mean)
+        .fillna(actual_cost)
     )
     baseline_std = (
         pd.Series(same_weekday_stds, index=df.index)
@@ -170,7 +172,9 @@ def build_zscore_results(
             "deviation": deviation.round(4),
             "relative_deviation": pd.Series(relative_deviation).round(6),
             "severity_hint": [_severity_from_z_score(score) for score in abs_z],
-            "explanation": [_zscore_explanation(score) for score in z_score],
+            "explanation": [
+                _zscore_explanation(score, z_threshold) for score in z_score
+            ],
         }
     )
 
@@ -217,10 +221,18 @@ def validate_zscore_results(results: pd.DataFrame) -> None:
 def run_zscore_detector(
     input_path: Path = config.DAILY_FEATURES_PATH,
     output_path: Path = config.ZSCORE_RESULTS_PATH,
+    rolling_window: int = config.ZSCORE_ROLLING_WINDOW,
+    min_periods: int = config.ZSCORE_MIN_PERIODS,
+    z_threshold: float = config.ZSCORE_THRESHOLD,
 ) -> Path:
     """Run the Rolling Z-score detector and write its CSV output."""
     daily_features = _load_daily_features(input_path)
-    results = build_zscore_results(daily_features)
+    results = build_zscore_results(
+        daily_features,
+        rolling_window=rolling_window,
+        min_periods=min_periods,
+        z_threshold=z_threshold,
+    )
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(output_path, index=False)

@@ -38,16 +38,23 @@ def add_calendar_features(daily_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_rolling_features(daily_df: pd.DataFrame) -> pd.DataFrame:
-    """Add trailing rolling cost and usage features using past/current data."""
+    """Add trailing statistics using only observations before the current day."""
     df = daily_df.copy().sort_values("usage_date").reset_index(drop=True)
+    cost_history = df["total_cost_usd"].shift(1)
+    usage_history = df["total_usage_amount"].shift(1)
 
     for window in [7, 14, 30]:
-        cost_window = df["total_cost_usd"].rolling(window=window, min_periods=1)
-        df[f"cost_rolling_mean_{window}"] = cost_window.mean().round(4)
-        df[f"cost_rolling_std_{window}"] = cost_window.std().fillna(0.0).round(4)
+        rolling_mean = cost_history.rolling(window=window, min_periods=1).mean()
+        rolling_std = cost_history.rolling(window=window, min_periods=2).std()
+        df[f"cost_rolling_mean_{window}"] = (
+            rolling_mean.fillna(df["total_cost_usd"]).round(4)
+        )
+        df[f"cost_rolling_std_{window}"] = rolling_std.fillna(0.0).round(4)
 
-    usage_window = df["total_usage_amount"].rolling(window=7, min_periods=1)
-    df["usage_rolling_mean_7"] = usage_window.mean().round(4)
+    usage_window = usage_history.rolling(window=7, min_periods=1)
+    df["usage_rolling_mean_7"] = (
+        usage_window.mean().fillna(df["total_usage_amount"]).round(4)
+    )
     df["usage_rolling_std_7"] = usage_window.std().fillna(0.0).round(4)
     return df
 
@@ -135,8 +142,31 @@ def add_top_contributor_features(
     df[contributor_cost_columns] = df[contributor_cost_columns].fillna(0.0).round(4)
     df["top_service_share"] = df["top_service_share"].clip(0, 1).round(6)
     df["top_region_share"] = df["top_region_share"].clip(0, 1).round(6)
+    df["top_service_share_change_1d"] = (
+        df["top_service_share"].diff().fillna(0.0).round(6)
+    )
+    df["top_region_share_change_1d"] = (
+        df["top_region_share"].diff().fillna(0.0).round(6)
+    )
     df["top_service"] = df["top_service"].fillna("none")
     df["top_region"] = df["top_region"].fillna("none")
+    return df
+
+
+def add_baseline_ratio_features(daily_df: pd.DataFrame) -> pd.DataFrame:
+    """Measure current cost against past-only rolling means."""
+    df = daily_df.copy()
+    for window in [7, 14]:
+        baseline = pd.to_numeric(
+            df[f"cost_rolling_mean_{window}"],
+            errors="raise",
+        )
+        ratio = np.where(
+            baseline > 0,
+            (df["total_cost_usd"] - baseline) / baseline,
+            0.0,
+        )
+        df[f"cost_vs_rolling_mean_{window}"] = pd.Series(ratio).round(6)
     return df
 
 
@@ -162,6 +192,7 @@ def build_daily_features(
     df = add_rolling_features(df)
     df = add_change_features(df)
     df = add_top_contributor_features(df, service_df, region_df)
+    df = add_baseline_ratio_features(df)
     df = df[config.DAILY_FEATURE_COLUMNS]
     validate_daily_features(df)
     return df

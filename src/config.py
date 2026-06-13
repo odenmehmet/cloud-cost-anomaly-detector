@@ -1,6 +1,4 @@
-"""
-Configuration and constants for synthetic data generation and processing.
-"""
+"""Configuration and constants for synthetic data generation and processing."""
 
 from pathlib import Path
 
@@ -14,6 +12,7 @@ REPORTS_DIR = PROJECT_ROOT / "reports"
 
 SYNTHETIC_CUR_LIKE_PATH = RAW_DATA_DIR / "synthetic_cur_like_daily.csv"
 ANOMALY_CATALOG_PATH = RAW_DATA_DIR / "anomaly_catalog.csv"
+PLANNED_EVENT_CATALOG_PATH = RAW_DATA_DIR / "planned_event_catalog.csv"
 DAILY_TOTAL_COST_PATH = PROCESSED_DATA_DIR / "daily_total_cost.csv"
 DAILY_SERVICE_COST_PATH = PROCESSED_DATA_DIR / "daily_service_cost.csv"
 DAILY_REGION_COST_PATH = PROCESSED_DATA_DIR / "daily_region_cost.csv"
@@ -25,10 +24,13 @@ ISOLATION_FOREST_RESULTS_PATH = OUTPUTS_DATA_DIR / "isolation_forest_results.csv
 STL_COMPONENTS_PATH = OUTPUTS_DATA_DIR / "stl_components.csv"
 METHOD_RESULTS_PATH = OUTPUTS_DATA_DIR / "method_results.csv"
 ALERTS_PATH = OUTPUTS_DATA_DIR / "alerts.csv"
+SUPPRESSED_ALERTS_PATH = OUTPUTS_DATA_DIR / "suppressed_alerts.csv"
 CONTRIBUTORS_PATH = OUTPUTS_DATA_DIR / "contributors.csv"
 ALERT_METHOD_SUMMARY_PATH = OUTPUTS_DATA_DIR / "alert_method_summary.csv"
+CALIBRATION_SUMMARY_PATH = REPORTS_DIR / "calibration_summary.csv"
 EVALUATION_SUMMARY_PATH = REPORTS_DIR / "evaluation_summary.csv"
 EVALUATION_BY_TYPE_PATH = REPORTS_DIR / "evaluation_by_type.csv"
+EVENT_LEVEL_EVALUATION_PATH = REPORTS_DIR / "event_level_evaluation.csv"
 DETECTION_DELAY_PATH = REPORTS_DIR / "detection_delay.csv"
 FALSE_POSITIVE_DAYS_PATH = REPORTS_DIR / "false_positive_days.csv"
 EVALUATION_DAILY_PREDICTIONS_PATH = REPORTS_DIR / "evaluation_daily_predictions.csv"
@@ -36,26 +38,38 @@ EVALUATION_DAILY_PREDICTIONS_PATH = REPORTS_DIR / "evaluation_daily_predictions.
 DEFAULT_RANDOM_SEED = 42
 START_DATE = "2025-10-01"
 NUM_DAYS = 180
+
 ZSCORE_ROLLING_WINDOW = 14
-ZSCORE_MIN_PERIODS = 7
+ZSCORE_MIN_PERIODS = 4
 ZSCORE_THRESHOLD = 3.0
 STL_PERIOD = 7
 STL_RESIDUAL_THRESHOLD = 3.0
-ISOLATION_FOREST_N_ESTIMATORS = 100
-ISOLATION_FOREST_CONTAMINATION = 0.05
-WARNING_RELATIVE_DELTA = 0.05
-CRITICAL_RELATIVE_DELTA = 0.08
+ISOLATION_FOREST_N_ESTIMATORS = 200
+ISOLATION_FOREST_CONTAMINATION = 0.08
+
+CALIBRATION_ZSCORE_WINDOWS = [7, 14, 21]
+CALIBRATION_ZSCORE_THRESHOLDS = [2.5, 3.0, 3.5]
+CALIBRATION_STL_THRESHOLDS = [2.5, 3.0, 3.5]
+CALIBRATION_ISOLATION_CONTAMINATIONS = [0.04, 0.06, 0.08, 0.10, 0.12]
+
+# Operational alerts require meaningful upward cost deviation as well as detector
+# evidence. Planned-event candidates are exported separately and suppressed.
+ALERT_WARNING_RELATIVE_DELTA = 0.05
+ALERT_CRITICAL_RELATIVE_DELTA = 0.10
+ALERT_STRONG_SINGLE_METHOD_DELTA = 0.12
+ALERT_WARNING_MIN_METHODS = 2
+ALERT_CRITICAL_MIN_METHODS = 3
+
 TOP_CONTRIBUTOR_LIMIT = 5
 EVALUATION_SUBJECTS = [
     "zscore",
     "stl",
     "isolation_forest",
+    "raw_alert_candidate",
     "agreement_alert",
 ]
-EVALUATION_MATCHING_MODES = [
-    "exact_day",
-    "tolerance_1_day",
-]
+EVALUATION_MATCHING_MODES = ["exact_day", "tolerance_1_day"]
+EVENT_MATCHING_MODES = ["event_window", "event_window_tolerance_1_day"]
 
 SERVICES = [
     "AmazonEC2",
@@ -77,6 +91,11 @@ REGIONS = [
 
 TAG_ENVIRONMENTS = ["prod", "staging", "dev"]
 TAG_TEAMS = ["platform", "data", "web", "ml"]
+ACCOUNT_BY_ENVIRONMENT = {
+    "prod": "111111111111",
+    "staging": "222222222222",
+    "dev": "333333333333",
+}
 
 SERVICE_METADATA = {
     "AmazonEC2": {
@@ -144,21 +163,10 @@ REGION_COST_MULTIPLIERS = {
     "ap-southeast-1": 1.14,
 }
 
-ENVIRONMENT_USAGE_MULTIPLIERS = {
-    "prod": 1.00,
-    "staging": 0.38,
-    "dev": 0.24,
-}
-
-TEAM_USAGE_MULTIPLIERS = {
-    "platform": 1.05,
-    "data": 1.12,
-    "web": 0.95,
-    "ml": 1.18,
-}
-
+ENVIRONMENT_USAGE_MULTIPLIERS = {"prod": 1.00, "staging": 0.38, "dev": 0.24}
+TEAM_USAGE_MULTIPLIERS = {"platform": 1.05, "data": 1.12, "web": 0.95, "ml": 1.18}
 WEEKLY_SEASONALITY_MULTIPLIERS = {
-    0: 1.07,  # Monday
+    0: 1.07,
     1: 1.05,
     2: 1.04,
     3: 1.03,
@@ -170,7 +178,12 @@ WEEKLY_SEASONALITY_MULTIPLIERS = {
 LONG_TERM_TREND_DAILY_RATE = 0.0007
 USAGE_NOISE_STDDEV = 0.045
 COST_NOISE_STDDEV = 0.012
+DAILY_GLOBAL_NOISE_STDDEV = 0.012
+SERVICE_DAILY_NOISE_STDDEV = 0.018
 
+# Events stay service/region-specific, but their duration and magnitude are
+# aligned with daily-total Level 1 detection rather than being structurally
+# invisible after aggregation.
 ANOMALY_EVENTS = [
     {
         "anomaly_id": "ANOM-001",
@@ -179,59 +192,69 @@ ANOMALY_EVENTS = [
         "duration_days": 1,
         "affected_service": "AmazonEC2",
         "affected_region": "us-east-1",
-        "magnitude": 3.65,
-        "planned_event": 0,
-        "description": "Single-day EC2 usage spike in us-east-1.",
+        "magnitude": 5.00,
+        "description": "Single-day EC2 runaway usage spike in us-east-1.",
     },
     {
         "anomaly_id": "ANOM-002",
         "anomaly_type": "persistent_step_increase",
         "start_day": 75,
-        "duration_days": 12,
+        "duration_days": 5,
         "affected_service": "AmazonRDS",
-        "affected_region": "eu-west-1",
-        "magnitude": 1.58,
-        "planned_event": 0,
-        "description": "Persistent RDS cost step increase in eu-west-1.",
+        "affected_region": "ap-southeast-1",
+        "magnitude": 3.00,
+        "description": "Five-day RDS capacity step increase in ap-southeast-1.",
     },
     {
         "anomaly_id": "ANOM-003",
         "anomaly_type": "gradual_drift",
         "start_day": 110,
-        "duration_days": 16,
-        "affected_service": "AmazonEKS",
+        "duration_days": 8,
+        "affected_service": "AmazonS3",
         "affected_region": "eu-central-1",
-        "start_magnitude": 1.05,
-        "magnitude": 1.55,
-        "planned_event": 0,
-        "description": "Gradual EKS cost drift in eu-central-1.",
+        "start_magnitude": 1.10,
+        "magnitude": 2.40,
+        "description": "Eight-day S3 storage drift in eu-central-1.",
     },
     {
         "anomaly_id": "ANOM-004",
         "anomaly_type": "service_local_anomaly",
         "start_day": 145,
-        "duration_days": 4,
+        "duration_days": 3,
         "affected_service": "AmazonDynamoDB",
         "affected_region": "ap-southeast-1",
-        "magnitude": 2.45,
-        "planned_event": 0,
-        "description": "Localized DynamoDB cost anomaly in ap-southeast-1.",
+        "magnitude": 5.00,
+        "description": "Localized DynamoDB capacity anomaly in ap-southeast-1.",
     },
     {
-        "anomaly_id": "PLAN-001",
-        "anomaly_type": "legitimate_usage_increase",
+        "anomaly_id": "ANOM-005",
+        "anomaly_type": "multi_day_burst",
+        "start_day": 160,
+        "duration_days": 3,
+        "affected_service": "AmazonEC2",
+        "affected_region": "eu-central-1",
+        "magnitude": 4.00,
+        "description": "Three-day EC2 workload burst in eu-central-1.",
+    },
+]
+
+PLANNED_EVENTS = [
+    {
+        "planned_event_id": "PLAN-001",
+        "planned_event_type": "legitimate_usage_increase",
         "start_day": 62,
-        "duration_days": 8,
+        "duration_days": 5,
         "affected_service": "AmazonCloudFront",
         "affected_region": "us-east-1",
-        "magnitude": 1.42,
-        "planned_event": 1,
-        "description": "Planned CloudFront traffic increase for a business event.",
+        "magnitude": 1.25,
+        "description": "Planned CloudFront traffic growth for a business event.",
     },
 ]
 
 CUR_LIKE_COLUMNS = [
     "usage_date",
+    "billing_period_start",
+    "usage_account_id",
     "service",
     "region",
     "usage_amount",
@@ -242,11 +265,13 @@ CUR_LIKE_COLUMNS = [
     "tag_environment",
     "tag_team",
     "line_item_type",
+    "billing_currency",
     "source_record_count",
     "is_anomaly",
     "anomaly_type",
     "anomaly_id",
     "planned_event",
+    "planned_event_id",
 ]
 
 ANOMALY_CATALOG_COLUMNS = [
@@ -257,7 +282,17 @@ ANOMALY_CATALOG_COLUMNS = [
     "affected_service",
     "affected_region",
     "magnitude",
-    "planned_event",
+    "description",
+]
+
+PLANNED_EVENT_CATALOG_COLUMNS = [
+    "planned_event_id",
+    "planned_event_type",
+    "start_date",
+    "end_date",
+    "affected_service",
+    "affected_region",
+    "magnitude",
     "description",
 ]
 
@@ -267,6 +302,7 @@ DAILY_TOTAL_COST_COLUMNS = [
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
 ]
 
 PROCESSED_DAILY_TOTAL_COST_COLUMNS = [
@@ -275,10 +311,12 @@ PROCESSED_DAILY_TOTAL_COST_COLUMNS = [
     "total_usage_amount",
     "service_count",
     "region_count",
+    "account_count",
     "row_count",
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
 ]
 
 DAILY_SERVICE_COST_COLUMNS = [
@@ -290,6 +328,7 @@ DAILY_SERVICE_COST_COLUMNS = [
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
 ]
 
 DAILY_REGION_COST_COLUMNS = [
@@ -301,6 +340,7 @@ DAILY_REGION_COST_COLUMNS = [
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
 ]
 
 DAILY_SERVICE_REGION_COST_COLUMNS = [
@@ -313,6 +353,7 @@ DAILY_SERVICE_REGION_COST_COLUMNS = [
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
 ]
 
 DAILY_FEATURE_COLUMNS = [
@@ -321,10 +362,12 @@ DAILY_FEATURE_COLUMNS = [
     "total_usage_amount",
     "service_count",
     "region_count",
+    "account_count",
     "row_count",
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
     "day_of_week",
     "is_weekend",
     "cost_rolling_mean_7",
@@ -342,9 +385,13 @@ DAILY_FEATURE_COLUMNS = [
     "top_service",
     "top_service_cost_usd",
     "top_service_share",
+    "top_service_share_change_1d",
     "top_region",
     "top_region_cost_usd",
     "top_region_share",
+    "top_region_share_change_1d",
+    "cost_vs_rolling_mean_7",
+    "cost_vs_rolling_mean_14",
 ]
 
 DETECTOR_RESULT_COLUMNS = [
@@ -365,10 +412,10 @@ DETECTOR_OPTIONAL_CONTEXT_COLUMNS = [
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
     "top_service",
     "top_region",
 ]
-
 DETECTOR_RESULT_WITH_CONTEXT_COLUMNS = (
     DETECTOR_RESULT_COLUMNS + DETECTOR_OPTIONAL_CONTEXT_COLUMNS
 )
@@ -386,7 +433,8 @@ STL_COMPONENT_COLUMNS = [
 
 ISOLATION_FOREST_FEATURE_COLUMNS = [
     "total_cost_usd",
-    "total_usage_amount",
+    "cost_rolling_mean_14",
+    "cost_rolling_std_14",
     "day_of_week",
     "is_weekend",
     "pct_change_1d",
@@ -394,9 +442,11 @@ ISOLATION_FOREST_FEATURE_COLUMNS = [
     "cost_diff_1d",
     "cost_diff_7d",
     "top_service_share",
+    "top_service_share_change_1d",
     "top_region_share",
-    "service_count",
-    "region_count",
+    "top_region_share_change_1d",
+    "cost_vs_rolling_mean_7",
+    "cost_vs_rolling_mean_14",
 ]
 
 ALERT_COLUMNS = [
@@ -433,8 +483,22 @@ ALERT_METHOD_SUMMARY_COLUMNS = [
     "is_true_anomaly",
     "anomaly_type",
     "planned_event",
+    "planned_event_ids",
     "top_service",
     "top_region",
+]
+
+SUPPRESSED_ALERT_COLUMNS = [
+    "suppression_id",
+    "usage_date",
+    "suppression_type",
+    "methods_triggered",
+    "method_count",
+    "actual_cost",
+    "expected_cost",
+    "relative_delta",
+    "planned_event_id",
+    "suppression_reason",
 ]
 
 CONTRIBUTOR_COLUMNS = [
@@ -447,8 +511,25 @@ CONTRIBUTOR_COLUMNS = [
     "previous_7d_avg_cost",
     "delta_cost",
     "contribution_share",
+    "contribution_basis",
     "rank",
     "contributor_reason",
+]
+
+CALIBRATION_SUMMARY_COLUMNS = [
+    "method",
+    "candidate_id",
+    "parameters",
+    "predicted_positive_days",
+    "true_positives",
+    "false_positives",
+    "false_negatives",
+    "precision",
+    "recall",
+    "f1",
+    "event_recall",
+    "selection_score",
+    "selected",
 ]
 
 EVALUATION_SUMMARY_COLUMNS = [
@@ -475,6 +556,19 @@ EVALUATION_BY_TYPE_COLUMNS = [
     "detected_days_tolerance_1_day",
     "recall_exact",
     "recall_tolerance_1_day",
+]
+
+EVENT_LEVEL_EVALUATION_COLUMNS = [
+    "subject",
+    "matching_mode",
+    "true_events",
+    "predicted_events",
+    "detected_events",
+    "false_positive_events",
+    "missed_events",
+    "event_precision",
+    "event_recall",
+    "event_f1",
 ]
 
 DETECTION_DELAY_COLUMNS = [
@@ -507,9 +601,11 @@ EVALUATION_DAILY_PREDICTION_COLUMNS = [
     "is_anomaly",
     "anomaly_types",
     "planned_event",
+    "planned_event_ids",
     "zscore_pred",
     "stl_pred",
     "isolation_forest_pred",
+    "raw_alert_candidate_pred",
     "agreement_alert_pred",
 ]
 
@@ -518,5 +614,5 @@ REQUIRED_CATALOG_EVENT_TYPES = [
     "persistent_step_increase",
     "gradual_drift",
     "service_local_anomaly",
-    "legitimate_usage_increase",
+    "multi_day_burst",
 ]

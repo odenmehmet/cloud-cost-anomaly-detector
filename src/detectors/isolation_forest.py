@@ -193,10 +193,18 @@ def validate_isolation_forest_results(results: pd.DataFrame) -> None:
 def run_isolation_forest_detector(
     input_path: Path = config.DAILY_FEATURES_PATH,
     output_path: Path = config.ISOLATION_FOREST_RESULTS_PATH,
+    n_estimators: int = config.ISOLATION_FOREST_N_ESTIMATORS,
+    contamination: float = config.ISOLATION_FOREST_CONTAMINATION,
+    random_state: int = config.DEFAULT_RANDOM_SEED,
 ) -> Path:
     """Run the Isolation Forest detector and write its CSV output."""
     daily_features = _load_daily_features(input_path)
-    results = build_isolation_forest_results(daily_features)
+    results = build_isolation_forest_results(
+        daily_features,
+        n_estimators=n_estimators,
+        contamination=contamination,
+        random_state=random_state,
+    )
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(output_path, index=False)
