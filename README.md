@@ -65,6 +65,22 @@ If local PowerShell policy blocks a batch invocation, use:
 powershell -ExecutionPolicy Bypass -File scripts\run_web.ps1
 ```
 
+### macOS / Linux
+
+The same pipeline runs on macOS and Linux. Use the POSIX runner or the Makefile:
+
+```bash
+bash scripts/run_web.sh     # full run + dashboard, mirrors run_web.bat
+# or
+make web                    # equivalent target
+make pipeline               # Python pipeline only
+make check                  # scenario robustness + output smoke check
+```
+
+`make help` lists all targets. The runner performs the identical eight steps as the
+PowerShell version (venv, requirements, pipeline, robustness, validation, JSON export,
+web dependencies, Vite dev server).
+
 ## Production Build
 
 ```powershell
@@ -155,6 +171,31 @@ Static JSON export
         |
 React web dashboard
 ```
+
+## Synthetic Data and AWS CUR Mapping
+
+The generated records mirror the schema of the AWS Cost and Usage Report (CUR) so the
+pipeline operates on realistic billing columns. The synthetic generator populates the
+following CUR-equivalent fields (column names in `data/raw/synthetic_cur_like_daily.csv`):
+
+| Synthetic column            | AWS CUR field                        | Purpose in this project                |
+|-----------------------------|--------------------------------------|----------------------------------------|
+| `usage_date`                | `lineItem/UsageStartDate` (day)      | Daily aggregation key                  |
+| `billing_period_start`      | `bill/BillingPeriodStartDate`        | Billing period context                 |
+| `usage_account_id`          | `lineItem/UsageAccountId`            | Account-level grouping                 |
+| `service`                   | `product/ProductName` / `lineItem/ProductCode` | Service-level cost breakdown |
+| `region`                    | `product/region`                     | Region-level cost breakdown            |
+| `usage_amount` / `usage_unit` | `lineItem/UsageAmount` / `pricing/unit` | Usage volume and unit             |
+| `cost_usd`                  | `lineItem/UnblendedCost`             | Cost signal the detectors analyze      |
+| `operation`                 | `lineItem/Operation`                 | API operation context                  |
+| `usage_type`                | `lineItem/UsageType`                 | Usage type context                     |
+| `tag_environment` / `tag_team` | `resourceTags/user:*`             | Tag-level (cost allocation) dimensions |
+| `line_item_type`            | `lineItem/LineItemType`              | Usage vs. credit/tax line classification |
+| `billing_currency`          | `lineItem/CurrencyCode`              | Currency (fixed to USD here)           |
+
+Real CUR data is not ingested (see Scope Exclusions). The `is_anomaly`, `anomaly_type`,
+`anomaly_id`, `planned_event`, and `planned_event_id` columns are **synthetic ground-truth
+labels** that do not exist in real CUR; they exist only to make evaluation reproducible.
 
 ## Detection Methods
 
