@@ -12,6 +12,7 @@ interface LayoutProps {
 
 const PAGE_TITLES: Record<PageId, string> = {
   home: "Home",
+  data: "Source Data",
   overview: "Cost Overview",
   "anomaly-detail": "Alert Investigation",
   evaluation: "Method Evaluation",

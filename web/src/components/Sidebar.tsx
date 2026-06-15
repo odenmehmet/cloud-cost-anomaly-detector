@@ -4,6 +4,7 @@ import {
   Database,
   Gauge,
   Home,
+  Table2,
 } from "lucide-react";
 import type { PageId } from "../lib/types";
 
@@ -20,6 +21,7 @@ const NAV_ITEMS: Array<{
   icon: typeof Home;
 }> = [
   { page: "home", label: "Home", description: "Workspace summary", icon: Home },
+  { page: "data", label: "Source Data", description: "Synthetic CUR rows", icon: Table2 },
   { page: "overview", label: "Cost Overview", description: "Trends and alerts", icon: Gauge },
   {
     page: "anomaly-detail",

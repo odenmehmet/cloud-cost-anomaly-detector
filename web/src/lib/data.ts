@@ -14,6 +14,7 @@ import type {
   ScenarioRobustness,
   StlComponent,
   SuppressedAlert,
+  SyntheticCurSample,
 } from "./types";
 
 const GENERATED_ROOT = "/generated";
@@ -33,6 +34,7 @@ async function fetchGenerated<T>(filename: string, fallback: T): Promise<[T, str
 export async function loadDashboardData(): Promise<DataLoadResult> {
   const [
     manifest,
+    syntheticSample,
     dailyFeatures,
     methodResults,
     alerts,
@@ -48,6 +50,7 @@ export async function loadDashboardData(): Promise<DataLoadResult> {
     scenarioRobustness,
   ] = await Promise.all([
     fetchGenerated<DashboardManifest | null>("dashboard_manifest.json", null),
+    fetchGenerated<SyntheticCurSample | null>("synthetic_cur_sample.json", null),
     fetchGenerated<DailyFeature[]>("daily_features.json", []),
     fetchGenerated<MethodResult[]>("method_results.json", []),
     fetchGenerated<Alert[]>("alerts.json", []),
@@ -65,6 +68,7 @@ export async function loadDashboardData(): Promise<DataLoadResult> {
 
   const results = [
     manifest,
+    syntheticSample,
     dailyFeatures,
     methodResults,
     alerts,
@@ -83,19 +87,20 @@ export async function loadDashboardData(): Promise<DataLoadResult> {
   return {
     data: {
       manifest: results[0][0],
-      dailyFeatures: results[1][0],
-      methodResults: results[2][0],
-      alerts: results[3][0],
-      suppressedAlerts: results[4][0],
-      contributors: results[5][0],
-      stlComponents: results[6][0],
-      calibrationSummary: results[7][0],
-      evaluationSummary: results[8][0],
-      eventLevelEvaluation: results[9][0],
-      evaluationByType: results[10][0],
-      detectionDelay: results[11][0],
-      falsePositiveDays: results[12][0],
-      scenarioRobustness: results[13][0],
+      syntheticSample: results[1][0],
+      dailyFeatures: results[2][0],
+      methodResults: results[3][0],
+      alerts: results[4][0],
+      suppressedAlerts: results[5][0],
+      contributors: results[6][0],
+      stlComponents: results[7][0],
+      calibrationSummary: results[8][0],
+      evaluationSummary: results[9][0],
+      eventLevelEvaluation: results[10][0],
+      evaluationByType: results[11][0],
+      detectionDelay: results[12][0],
+      falsePositiveDays: results[13][0],
+      scenarioRobustness: results[14][0],
     },
     missingFiles: results
       .map(([, missing]) => missing)

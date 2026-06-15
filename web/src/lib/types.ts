@@ -193,8 +193,39 @@ export interface ScenarioRobustness {
   event_f1: number;
 }
 
+export interface SyntheticCurRow {
+  usage_date: string;
+  billing_period_start: string;
+  usage_account_id: number;
+  service: string;
+  region: string;
+  usage_amount: number;
+  usage_unit: string;
+  cost_usd: number;
+  operation: string;
+  usage_type: string;
+  tag_environment: string;
+  tag_team: string;
+  line_item_type: string;
+  billing_currency: string;
+  source_record_count: number;
+  is_anomaly: number;
+  anomaly_type: string;
+  anomaly_id: string;
+  planned_event: number;
+  planned_event_id: string;
+}
+
+export interface SyntheticCurSample {
+  sample_rows: number;
+  total_rows: number;
+  columns: string[];
+  rows: SyntheticCurRow[];
+}
+
 export interface DashboardData {
   manifest: DashboardManifest | null;
+  syntheticSample: SyntheticCurSample | null;
   dailyFeatures: DailyFeature[];
   methodResults: MethodResult[];
   alerts: Alert[];
@@ -215,4 +246,4 @@ export interface DataLoadResult {
   missingFiles: string[];
 }
 
-export type PageId = "home" | "overview" | "anomaly-detail" | "evaluation";
+export type PageId = "home" | "data" | "overview" | "anomaly-detail" | "evaluation";

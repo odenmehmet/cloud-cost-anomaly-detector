@@ -12,6 +12,11 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = PROJECT_ROOT / "web" / "public" / "generated"
 
+# The raw CUR-like file has tens of thousands of rows, so only a small,
+# representative sample is exported for the dashboard data preview.
+RAW_CUR_LIKE_PATH = PROJECT_ROOT / "data" / "raw" / "synthetic_cur_like_daily.csv"
+RAW_SAMPLE_ROWS = 200
+
 SOURCE_FILES = {
     "daily_features": PROJECT_ROOT / "data" / "processed" / "daily_features.csv",
     "method_results": PROJECT_ROOT / "data" / "outputs" / "method_results.csv",
@@ -56,6 +61,22 @@ def main() -> None:
     for name, frame in frames.items():
         write_json(OUTPUT_DIR / f"{name}.json", dataframe_records(frame))
 
+    raw_sample_rows = 0
+    if RAW_CUR_LIKE_PATH.exists():
+        raw_sample = pd.read_csv(RAW_CUR_LIKE_PATH, nrows=RAW_SAMPLE_ROWS)
+        raw_sample_rows = int(len(raw_sample))
+        with RAW_CUR_LIKE_PATH.open(encoding="utf-8") as handle:
+            total_rows = sum(1 for _ in handle) - 1  # exclude header
+        write_json(
+            OUTPUT_DIR / "synthetic_cur_sample.json",
+            {
+                "sample_rows": raw_sample_rows,
+                "total_rows": int(total_rows),
+                "columns": list(raw_sample.columns),
+                "rows": dataframe_records(raw_sample),
+            },
+        )
+
     daily = frames["daily_features"]
     alerts = frames["alerts"]
     suppressed = frames["suppressed_alerts"]
@@ -80,7 +101,8 @@ def main() -> None:
     }
     write_json(OUTPUT_DIR / "dashboard_manifest.json", manifest)
 
-    print(f"Exported {len(SOURCE_FILES) + 1} JSON files to {OUTPUT_DIR}")
+    extra = 2 if raw_sample_rows else 1
+    print(f"Exported {len(SOURCE_FILES) + extra} JSON files to {OUTPUT_DIR}")
 
 
 if __name__ == "__main__":

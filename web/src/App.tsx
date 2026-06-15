@@ -5,6 +5,7 @@ import { loadDashboardData } from "./lib/data";
 import type { DataLoadResult, PageId } from "./lib/types";
 
 const Home = lazy(() => import("./pages/Home").then((module) => ({ default: module.Home })));
+const Data = lazy(() => import("./pages/Data").then((module) => ({ default: module.Data })));
 const Overview = lazy(() =>
   import("./pages/Overview").then((module) => ({ default: module.Overview })),
 );
@@ -17,6 +18,7 @@ const Evaluation = lazy(() =>
 
 const PAGE_PATHS: Record<PageId, string> = {
   home: "/",
+  data: "/data",
   overview: "/overview",
   "anomaly-detail": "/anomaly-detail",
   evaluation: "/evaluation",
@@ -92,6 +94,8 @@ export default function App() {
           </div>
         ) : route.page === "home" ? (
           <Home manifest={manifest!} onNavigate={navigate} />
+        ) : route.page === "data" ? (
+          <Data sample={data.syntheticSample} />
         ) : route.page === "overview" ? (
           <Overview
             daily={data.dailyFeatures}

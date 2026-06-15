@@ -138,6 +138,8 @@ The dashboard reads JSON exported from existing pipeline CSV outputs. It does no
 recalculate detector results, alert rules, contributor values, or evaluation metrics.
 
 - **Home**: dataset and alert KPIs, pipeline overview, primary views, and scope.
+- **Source Data**: AWS CUR column mapping and a preview sample of the raw synthetic
+  CUR-like billing rows with ground-truth labels.
 - **Cost Overview**: daily cost, 7-day moving average, STL expected cost, anomaly
   labels, planned events, operational alerts, suppressions, and detector flag counts.
 - **Anomaly Detail**: alert status, local cost context, method evidence, and ranked
