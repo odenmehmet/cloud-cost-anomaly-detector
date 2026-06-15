@@ -35,6 +35,7 @@ FILES = {
     "event_level": config.EVENT_LEVEL_EVALUATION_PATH,
     "detection_delay": config.DETECTION_DELAY_PATH,
     "false_positive_days": config.FALSE_POSITIVE_DAYS_PATH,
+    "scenario_robustness": config.SCENARIO_ROBUSTNESS_PATH,
 }
 
 
@@ -367,6 +368,68 @@ def check_evaluation() -> None:
     )
 
 
+def check_scenario_robustness() -> None:
+    robustness = read_csv("scenario_robustness")
+    assert list(robustness.columns) == config.SCENARIO_ROBUSTNESS_COLUMNS
+    assert len(robustness) == 5
+    assert robustness["scenario_id"].is_unique
+    assert robustness["random_seed"].is_unique
+    assert set(robustness["random_seed"]) == {7, 21, 42, 84, 126}
+    assert set(robustness["calibration_mode"]) == {"fixed_main_scenario"}
+
+    metric_columns = [
+        "operational_precision",
+        "operational_recall",
+        "operational_f1",
+        "event_precision",
+        "event_recall",
+        "event_f1",
+    ]
+    assert robustness[metric_columns].apply(
+        lambda column: column.between(0, 1)
+    ).all().all()
+    assert robustness[
+        [
+            "operational_precision",
+            "operational_recall",
+            "operational_f1",
+            "operational_false_positives_per_30_days",
+            "event_precision",
+            "event_recall",
+            "event_f1",
+        ]
+    ].drop_duplicates().shape[0] > 1
+
+    main = robustness[robustness["scenario_id"] == "seed_42_main"]
+    assert len(main) == 1
+    main = main.iloc[0]
+    summary = read_csv("evaluation_summary")
+    operational = summary[
+        (summary["subject"] == "agreement_alert")
+        & (summary["matching_mode"] == "exact_day")
+    ].iloc[0]
+    event_level = read_csv("event_level")
+    event = event_level[
+        (event_level["subject"] == "agreement_alert")
+        & (event_level["matching_mode"] == "event_window")
+    ].iloc[0]
+
+    assert main["true_anomaly_days"] == operational["true_anomaly_days"]
+    assert main["operational_alerts"] == operational["predicted_positive_days"]
+    assert abs(main["operational_precision"] - operational["precision"]) <= 1e-6
+    assert abs(main["operational_recall"] - operational["recall"]) <= 1e-6
+    assert abs(main["operational_f1"] - operational["f1"]) <= 1e-6
+    assert abs(
+        main["operational_false_positives_per_30_days"]
+        - operational["false_positives_per_30_days"]
+    ) <= 1e-6
+    assert main["true_anomaly_events"] == event["true_events"]
+    assert abs(main["event_precision"] - event["event_precision"]) <= 1e-6
+    assert abs(main["event_recall"] - event["event_recall"]) <= 1e-6
+    assert abs(main["event_f1"] - event["event_f1"]) <= 1e-6
+    assert main["suppressed_planned_candidates"] == len(read_csv("suppressed"))
+
+
 def main() -> None:
     for path in FILES.values():
         assert path.exists(), f"Missing required output file: {path}"
@@ -379,6 +442,7 @@ def main() -> None:
     check_detection_calibration_and_alerts()
     check_contributors()
     check_evaluation()
+    check_scenario_robustness()
     print("Smoke check passed: outputs reconcile to source data and policy contracts.")
 
 

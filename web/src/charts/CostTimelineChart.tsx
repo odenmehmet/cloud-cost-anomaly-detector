@@ -11,8 +11,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatMethods, formatUsd, humanize } from "../lib/format";
-import type { Alert, DailyFeature, StlComponent } from "../lib/types";
+import { formatMethods, formatPercent, formatUsd, humanize } from "../lib/format";
+import type {
+  Alert,
+  DailyFeature,
+  MethodResult,
+  StlComponent,
+  SuppressedAlert,
+} from "../lib/types";
 
 export interface TimelineVisibility {
   movingAverage: boolean;
@@ -27,6 +33,8 @@ interface CostTimelineChartProps {
   daily: DailyFeature[];
   stl: StlComponent[];
   alerts: Alert[];
+  methods: MethodResult[];
+  suppressed?: SuppressedAlert[];
   visibility: TimelineVisibility;
   selectedDate?: string;
   height?: number;
@@ -34,17 +42,29 @@ interface CostTimelineChartProps {
 
 interface TimelinePoint extends DailyFeature {
   expected_cost: number | null;
-  alert_level: string | null;
-  methods_triggered: string | null;
-  true_marker: number | null;
+  relative_delta: number | null;
+  operational_alert_level: string | null;
+  ground_truth_status: "detected" | "missed" | "none";
+  raw_detector_triggers: string | null;
+  detected_true_marker: number | null;
+  missed_true_marker: number | null;
   planned_marker: number | null;
   warning_marker: number | null;
   critical_marker: number | null;
 }
 
+const METHOD_ORDER = ["zscore", "stl", "isolation_forest"];
+const EMPTY_SUPPRESSED_ALERTS: SuppressedAlert[] = [];
+
 function formatThousands(value: number): string {
   const thousands = value / 1000;
   return `$${thousands.toFixed(thousands >= 10 ? 0 : 1).replace(/\.0$/, "")}k`;
+}
+
+function groundTruthLabel(status: TimelinePoint["ground_truth_status"]): string {
+  if (status === "detected") return "True anomaly \u2014 detected";
+  if (status === "missed") return "True anomaly \u2014 missed";
+  return "No";
 }
 
 function TimelineTooltip({
@@ -58,23 +78,35 @@ function TimelineTooltip({
   const point = payload[0].payload;
   return (
     <div className="chart-tooltip">
-      <strong>{point.usage_date}</strong>
+      <strong>Daily cost details</strong>
       <dl>
+        <div>
+          <dt>Date</dt>
+          <dd>{point.usage_date}</dd>
+        </div>
         <div>
           <dt>Actual cost</dt>
           <dd>{formatUsd(point.total_cost_usd)}</dd>
-        </div>
-        <div>
-          <dt>Moving average</dt>
-          <dd>{formatUsd(point.cost_rolling_mean_7)}</dd>
         </div>
         <div>
           <dt>Expected cost</dt>
           <dd>{formatUsd(point.expected_cost)}</dd>
         </div>
         <div>
-          <dt>Alert level</dt>
-          <dd>{point.alert_level ? humanize(point.alert_level) : "None"}</dd>
+          <dt>Delta</dt>
+          <dd>{formatPercent(point.relative_delta)}</dd>
+        </div>
+        <div>
+          <dt>Operational alert</dt>
+          <dd>
+            {point.operational_alert_level
+              ? humanize(point.operational_alert_level)
+              : "None"}
+          </dd>
+        </div>
+        <div>
+          <dt>Ground truth</dt>
+          <dd>{groundTruthLabel(point.ground_truth_status)}</dd>
         </div>
         <div>
           <dt>Anomaly type</dt>
@@ -85,8 +117,8 @@ function TimelineTooltip({
           <dd>{point.planned_event === 1 ? point.planned_event_ids : "None"}</dd>
         </div>
         <div>
-          <dt>Methods triggered</dt>
-          <dd>{formatMethods(point.methods_triggered)}</dd>
+          <dt>Raw detector triggers</dt>
+          <dd>{formatMethods(point.raw_detector_triggers)}</dd>
         </div>
       </dl>
     </div>
@@ -97,27 +129,61 @@ export function CostTimelineChart({
   daily,
   stl,
   alerts,
+  methods,
+  suppressed = EMPTY_SUPPRESSED_ALERTS,
   visibility,
   selectedDate,
   height = 410,
 }: CostTimelineChartProps) {
   const chartData = useMemo(() => {
-    const expectedByDate = new Map(stl.map((row) => [row.usage_date, row.expected_cost]));
+    const stlExpectedByDate = new Map(stl.map((row) => [row.usage_date, row.expected_cost]));
     const alertByDate = new Map(alerts.map((row) => [row.usage_date, row]));
+    const suppressedByDate = new Map(suppressed.map((row) => [row.usage_date, row]));
+    const rawTriggersByDate = new Map<string, Set<string>>();
+    methods.forEach((row) => {
+      if (row.is_flagged !== 1) return;
+      const triggered = rawTriggersByDate.get(row.usage_date) ?? new Set<string>();
+      triggered.add(row.method);
+      rawTriggersByDate.set(row.usage_date, triggered);
+    });
+
     return daily.map<TimelinePoint>((row) => {
       const alert = alertByDate.get(row.usage_date);
+      const suppressedCandidate = suppressedByDate.get(row.usage_date);
+      const expectedCost =
+        alert?.expected_cost ??
+        suppressedCandidate?.expected_cost ??
+        stlExpectedByDate.get(row.usage_date) ??
+        null;
+      const relativeDelta =
+        expectedCost !== null && expectedCost > 0
+          ? (row.total_cost_usd - expectedCost) / expectedCost
+          : null;
+      const isTrueAnomaly = row.is_anomaly === 1 && row.planned_event !== 1;
+      const groundTruthStatus = isTrueAnomaly
+        ? alert
+          ? "detected"
+          : "missed"
+        : "none";
+      const triggeredMethods = rawTriggersByDate.get(row.usage_date);
+      const orderedTriggers = METHOD_ORDER.filter((method) => triggeredMethods?.has(method));
+
       return {
         ...row,
-        expected_cost: expectedByDate.get(row.usage_date) ?? null,
-        alert_level: alert?.alert_level ?? null,
-        methods_triggered: alert?.methods_triggered ?? null,
-        true_marker: row.is_anomaly === 1 ? row.total_cost_usd : null,
+        expected_cost: expectedCost,
+        relative_delta: relativeDelta,
+        operational_alert_level: alert?.alert_level ?? null,
+        ground_truth_status: groundTruthStatus,
+        raw_detector_triggers: orderedTriggers.length > 0 ? orderedTriggers.join(",") : null,
+        detected_true_marker:
+          groundTruthStatus === "detected" ? row.total_cost_usd : null,
+        missed_true_marker: groundTruthStatus === "missed" ? row.total_cost_usd : null,
         planned_marker: row.planned_event === 1 ? row.total_cost_usd : null,
         warning_marker: alert?.alert_level === "warning" ? row.total_cost_usd : null,
         critical_marker: alert?.alert_level === "critical" ? row.total_cost_usd : null,
       };
     });
-  }, [alerts, daily, stl]);
+  }, [alerts, daily, methods, stl, suppressed]);
 
   return (
     <div className="chart-frame" aria-label="Daily cloud cost timeline">
@@ -175,13 +241,29 @@ export function CostTimelineChart({
             />
           ) : null}
           {visibility.trueAnomalies ? (
-            <Scatter
-              dataKey="true_marker"
-              name="True anomaly"
-              fill="var(--mint)"
-              shape="diamond"
-              isAnimationActive={false}
-            />
+            <>
+              <Scatter
+                dataKey="detected_true_marker"
+                name={"True anomaly \u2014 detected"}
+                fill="var(--mint)"
+                stroke="var(--bg)"
+                strokeWidth={1.5}
+                shape="diamond"
+                legendType="diamond"
+                isAnimationActive={false}
+              />
+              <Scatter
+                dataKey="missed_true_marker"
+                name={"True anomaly \u2014 missed"}
+                fill="var(--mint)"
+                fillOpacity={0.18}
+                stroke="var(--mint)"
+                strokeWidth={2}
+                shape="circle"
+                legendType="circle"
+                isAnimationActive={false}
+              />
+            </>
           ) : null}
           {visibility.plannedEvents ? (
             <Scatter

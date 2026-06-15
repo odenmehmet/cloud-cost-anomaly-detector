@@ -219,11 +219,13 @@ export function Overview({ daily, alerts, methods, stl, suppressed, onSelectAler
 
       <SectionCard
         title="Daily cost and expected behavior"
-        description="Hover for actual cost, expected cost, anomaly labels, and triggered methods."
+        description="Hover for operational status, ground truth, planned events, and raw detector triggers."
       >
         <CostTimelineChart
           daily={filteredDaily}
           alerts={filteredAlerts}
+          methods={methods}
+          suppressed={filteredSuppressed}
           stl={filteredStl}
           visibility={visibility}
         />

@@ -62,13 +62,16 @@ try {
     $Npm = Get-Command npm -ErrorAction Stop
     Write-Host "[setup] Node $(& $Node.Source --version), npm $(& $Npm.Source --version)"
 
-    Write-Host "[1/3] Running Python pipeline"
+    Write-Host "[1/4] Running Python pipeline"
     Invoke-Native $VenvPython (Join-Path $RepositoryRoot "run_pipeline.py")
 
-    Write-Host "[2/3] Checking generated outputs"
+    Write-Host "[2/4] Running scenario robustness evaluation"
+    Invoke-Native $VenvPython "-m" "src.scenario_robustness"
+
+    Write-Host "[3/4] Checking generated outputs"
     Invoke-Native $VenvPython (Join-Path $RepositoryRoot "tests\smoke_check_outputs.py")
 
-    Write-Host "[3/3] Exporting web dashboard data"
+    Write-Host "[4/4] Exporting web dashboard data"
     Invoke-Native $VenvPython (Join-Path $RepositoryRoot "scripts\export_web_data.py")
 
     Set-Location $WebRoot

@@ -11,6 +11,7 @@ import type {
   EvaluationSummary,
   FalsePositiveDay,
   MethodResult,
+  ScenarioRobustness,
   StlComponent,
   SuppressedAlert,
 } from "./types";
@@ -44,6 +45,7 @@ export async function loadDashboardData(): Promise<DataLoadResult> {
     evaluationByType,
     detectionDelay,
     falsePositiveDays,
+    scenarioRobustness,
   ] = await Promise.all([
     fetchGenerated<DashboardManifest | null>("dashboard_manifest.json", null),
     fetchGenerated<DailyFeature[]>("daily_features.json", []),
@@ -58,6 +60,7 @@ export async function loadDashboardData(): Promise<DataLoadResult> {
     fetchGenerated<EvaluationByType[]>("evaluation_by_type.json", []),
     fetchGenerated<DetectionDelay[]>("detection_delay.json", []),
     fetchGenerated<FalsePositiveDay[]>("false_positive_days.json", []),
+    fetchGenerated<ScenarioRobustness[]>("scenario_robustness.json", []),
   ]);
 
   const results = [
@@ -74,6 +77,7 @@ export async function loadDashboardData(): Promise<DataLoadResult> {
     evaluationByType,
     detectionDelay,
     falsePositiveDays,
+    scenarioRobustness,
   ] as const;
 
   return {
@@ -91,6 +95,7 @@ export async function loadDashboardData(): Promise<DataLoadResult> {
       evaluationByType: results[10][0],
       detectionDelay: results[11][0],
       falsePositiveDays: results[12][0],
+      scenarioRobustness: results[13][0],
     },
     missingFiles: results
       .map(([, missing]) => missing)

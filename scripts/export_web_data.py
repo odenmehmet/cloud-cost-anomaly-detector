@@ -25,6 +25,7 @@ SOURCE_FILES = {
     "evaluation_by_type": PROJECT_ROOT / "reports" / "evaluation_by_type.csv",
     "detection_delay": PROJECT_ROOT / "reports" / "detection_delay.csv",
     "false_positive_days": PROJECT_ROOT / "reports" / "false_positive_days.csv",
+    "scenario_robustness": PROJECT_ROOT / "reports" / "scenario_robustness.csv",
 }
 
 

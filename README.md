@@ -18,6 +18,7 @@ Contributor ranking is descriptive and non-causal.
 - Planned-event explanation and operational suppression
 - Positive cost-increase contributor ranking with an explicit fallback mode
 - Exact-day, within-one-day, event-level, delay, and false-positive evaluation
+- Scenario robustness evaluation across fixed deterministic synthetic seeds
 - React/Vite dashboard backed by exported pipeline outputs
 
 ## Scope Exclusions
@@ -48,10 +49,11 @@ The runner:
 1. Creates `.venv/` when needed.
 2. Installs or updates Python requirements inside `.venv/`.
 3. Runs the Python pipeline.
-4. validates generated outputs.
-5. Exports the existing CSV outputs to static JSON.
-6. Installs web dependencies when `web/node_modules/` is missing.
-7. Starts Vite on `http://127.0.0.1:5173`, or the next available port.
+4. Runs the fixed-seed scenario robustness evaluation.
+5. Validates generated outputs.
+6. Exports the existing CSV outputs to static JSON.
+7. Installs web dependencies when `web/node_modules/` is missing.
+8. Starts Vite on `http://127.0.0.1:5173`, or the next available port.
 
 Generated CSV and dashboard JSON files are intentionally not committed. A clean
 checkout becomes runnable through `run_web.bat`, which regenerates and validates all
@@ -83,6 +85,7 @@ Run only the Python pipeline:
 Run the output integrity and policy checks:
 
 ```powershell
+.\.venv\Scripts\python -m src.scenario_robustness
 .\.venv\Scripts\python tests\smoke_check_outputs.py
 ```
 
@@ -98,6 +101,7 @@ Export dashboard JSON after running the pipeline:
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python run_pipeline.py
+.\.venv\Scripts\python -m src.scenario_robustness
 .\.venv\Scripts\python tests\smoke_check_outputs.py
 .\.venv\Scripts\python scripts\export_web_data.py
 cd web
@@ -123,7 +127,8 @@ recalculate detector results, alert rules, contributor values, or evaluation met
 - **Anomaly Detail**: alert status, local cost context, method evidence, and ranked
   service/region contributors.
 - **Evaluation**: day-level and event-level metrics, selected calibration settings,
-  anomaly-type recall, detection delay, and false-positive detail.
+  anomaly-type recall, detection delay, false-positive detail, and scenario
+  robustness.
 
 ## Pipeline
 
@@ -209,6 +214,18 @@ Day-level recall is conservative for persistent and gradual events because every
 labeled day must be matched. Event-level recall answers the different question of
 whether the system detected each anomaly event at least once.
 
+### Scenario Robustness
+
+The main scenario reports 100% operational precision on a deterministic synthetic
+dataset. This is not presented as production generalization. A scenario robustness
+check across alternate deterministic synthetic seeds is included to show metric
+variability.
+
+The robustness run uses the detector settings selected by the main seed-42
+calibration for every scenario. It does not recalibrate or tune thresholds per seed,
+and it runs entirely in memory before writing only
+`reports/scenario_robustness.csv`.
+
 ## Generated Outputs
 
 Main generated files include:
@@ -228,6 +245,7 @@ reports/event_level_evaluation.csv
 reports/evaluation_by_type.csv
 reports/detection_delay.csv
 reports/false_positive_days.csv
+reports/scenario_robustness.csv
 web/public/generated/*.json
 ```
 
@@ -254,6 +272,7 @@ before Vite starts; `web/public/generated/.gitkeep` retains the required directo
 |   |-- alerts.py
 |   |-- contributors.py
 |   |-- evaluation.py
+|   |-- scenario_robustness.py
 |   `-- detectors/
 |-- tests/
 |   `-- smoke_check_outputs.py

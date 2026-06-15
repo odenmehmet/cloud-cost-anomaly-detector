@@ -43,6 +43,7 @@ checks, exports dashboard JSON, and starts the React dashboard.
    - Distinguish raw detectors, raw candidates, and operational alerts.
    - Compare day-level precision, recall, F1, and false positives per 30 days.
    - Compare day-level recall with event-level detection.
+   - Show the compact scenario robustness table.
    - Open selected calibration settings and explain the bounded sweep.
    - State that agreement alerts trade maximum recall for higher-confidence operations.
 
@@ -58,6 +59,10 @@ checks, exports dashboard JSON, and starts the React dashboard.
   multiple days, while detecting an event once may still be operationally useful.
 - **Why is contributor ranking non-causal?** It compares cost changes by dimension but
   does not use deployment, activity-log, or causal evidence.
+- **Why is main-scenario operational precision 100%?** It is a result for one
+  deterministic synthetic seed, not a production guarantee. The scenario robustness
+  table applies the same main calibration to fixed alternate seeds and shows natural
+  metric variation.
 
 ## Expected Questions
 
@@ -108,6 +113,7 @@ If alert IDs change:
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python run_pipeline.py
+.\.venv\Scripts\python -m src.scenario_robustness
 .\.venv\Scripts\python tests\smoke_check_outputs.py
 .\.venv\Scripts\python scripts\export_web_data.py
 cd web

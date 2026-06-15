@@ -220,6 +220,7 @@ export function AnomalyDetail({
           daily={localDaily}
           stl={localStl}
           alerts={localAlerts}
+          methods={methods}
           selectedDate={selected.usage_date}
           height={360}
           visibility={{

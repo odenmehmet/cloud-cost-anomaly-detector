@@ -176,6 +176,23 @@ export interface FalsePositiveDay {
   reason: string;
 }
 
+export interface ScenarioRobustness {
+  scenario_id: string;
+  random_seed: number;
+  calibration_mode: string;
+  true_anomaly_days: number;
+  true_anomaly_events: number;
+  operational_alerts: number;
+  suppressed_planned_candidates: number;
+  operational_precision: number;
+  operational_recall: number;
+  operational_f1: number;
+  operational_false_positives_per_30_days: number;
+  event_precision: number;
+  event_recall: number;
+  event_f1: number;
+}
+
 export interface DashboardData {
   manifest: DashboardManifest | null;
   dailyFeatures: DailyFeature[];
@@ -190,6 +207,7 @@ export interface DashboardData {
   evaluationByType: EvaluationByType[];
   detectionDelay: DetectionDelay[];
   falsePositiveDays: FalsePositiveDay[];
+  scenarioRobustness: ScenarioRobustness[];
 }
 
 export interface DataLoadResult {

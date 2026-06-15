@@ -34,6 +34,7 @@ EVENT_LEVEL_EVALUATION_PATH = REPORTS_DIR / "event_level_evaluation.csv"
 DETECTION_DELAY_PATH = REPORTS_DIR / "detection_delay.csv"
 FALSE_POSITIVE_DAYS_PATH = REPORTS_DIR / "false_positive_days.csv"
 EVALUATION_DAILY_PREDICTIONS_PATH = REPORTS_DIR / "evaluation_daily_predictions.csv"
+SCENARIO_ROBUSTNESS_PATH = REPORTS_DIR / "scenario_robustness.csv"
 
 DEFAULT_RANDOM_SEED = 42
 START_DATE = "2025-10-01"
@@ -607,6 +608,23 @@ EVALUATION_DAILY_PREDICTION_COLUMNS = [
     "isolation_forest_pred",
     "raw_alert_candidate_pred",
     "agreement_alert_pred",
+]
+
+SCENARIO_ROBUSTNESS_COLUMNS = [
+    "scenario_id",
+    "random_seed",
+    "calibration_mode",
+    "true_anomaly_days",
+    "true_anomaly_events",
+    "operational_alerts",
+    "suppressed_planned_candidates",
+    "operational_precision",
+    "operational_recall",
+    "operational_f1",
+    "operational_false_positives_per_30_days",
+    "event_precision",
+    "event_recall",
+    "event_f1",
 ]
 
 REQUIRED_CATALOG_EVENT_TYPES = [

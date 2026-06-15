@@ -119,6 +119,7 @@ export default function App() {
             byType={data.evaluationByType}
             delays={data.detectionDelay}
             falsePositives={data.falsePositiveDays}
+            scenarioRobustness={data.scenarioRobustness}
           />
         )}
       </Suspense>

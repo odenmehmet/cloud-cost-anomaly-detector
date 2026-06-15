@@ -13,6 +13,7 @@ import type {
   EventLevelEvaluation,
   EvaluationSummary,
   FalsePositiveDay,
+  ScenarioRobustness,
 } from "../lib/types";
 
 interface EvaluationProps {
@@ -22,6 +23,7 @@ interface EvaluationProps {
   falsePositives: FalsePositiveDay[];
   eventLevel: EventLevelEvaluation[];
   calibration: CalibrationSummary[];
+  scenarioRobustness: ScenarioRobustness[];
 }
 
 function matchingModeName(value: string): string {
@@ -133,6 +135,45 @@ const CALIBRATION_COLUMNS: DataColumn<CalibrationSummary>[] = [
   { key: "events", label: "Event recall", align: "right", render: (row) => formatPercent(row.event_recall) },
 ];
 
+const ROBUSTNESS_COLUMNS: DataColumn<ScenarioRobustness>[] = [
+  {
+    key: "scenario",
+    label: "Scenario",
+    render: (row) => row.scenario_id === "seed_42_main" ? "Main (seed 42)" : humanize(row.scenario_id),
+  },
+  { key: "seed", label: "Seed", align: "right", render: (row) => row.random_seed },
+  {
+    key: "precision",
+    label: "Ops precision",
+    align: "right",
+    render: (row) => formatPercent(row.operational_precision),
+  },
+  {
+    key: "recall",
+    label: "Ops recall",
+    align: "right",
+    render: (row) => formatPercent(row.operational_recall),
+  },
+  {
+    key: "f1",
+    label: "Ops F1",
+    align: "right",
+    render: (row) => formatPercent(row.operational_f1),
+  },
+  {
+    key: "eventRecall",
+    label: "Event recall",
+    align: "right",
+    render: (row) => formatPercent(row.event_recall),
+  },
+  {
+    key: "fp30",
+    label: "FP / 30 days",
+    align: "right",
+    render: (row) => formatNumber(row.operational_false_positives_per_30_days, 2),
+  },
+];
+
 export function Evaluation({
   summary,
   byType,
@@ -140,6 +181,7 @@ export function Evaluation({
   falsePositives,
   eventLevel,
   calibration,
+  scenarioRobustness,
 }: EvaluationProps) {
   const [matchingMode, setMatchingMode] = useState("exact_day");
   const filteredSummary = useMemo(
@@ -279,6 +321,17 @@ export function Evaluation({
             <p>Agreement alerts prioritize high-confidence operational alerts over maximum recall.</p>
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Scenario robustness check"
+        description="Main-scenario operational precision is not a production guarantee; alternate deterministic synthetic runs show metric variability."
+      >
+        <DataTable
+          columns={ROBUSTNESS_COLUMNS}
+          rows={scenarioRobustness}
+          rowKey={(row) => row.scenario_id}
+        />
       </SectionCard>
 
       <details className="summary-details">
